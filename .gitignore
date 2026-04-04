@@ -1,0 +1,50 @@
+# Build output / package manager state
+.gradle/
+build/
+out/
+target/
+
+# IDEs / editors
+.idea/
+.vscode/
+.fleet/
+*.iml
+*.ipr
+*.iws
+.classpath
+.project
+.settings/
+
+# Local environment and overrides
+.env
+.env.*
+!.env.example
+.envrc
+.direnv/
+*.local
+*.override
+
+# Logs, crash dumps, and temporary files
+*.log
+*.out
+*.err
+*.pid
+*.seed
+*.hprof
+hs_err_pid*
+replay_pid*
+*~
+*.swp
+*.swo
+
+# Certificates / keys / secret material
+*.pem
+*.key
+*.p12
+*.jks
+*.crt
+*.cer
+
+# OS metadata
+.DS_Store
+Thumbs.db
