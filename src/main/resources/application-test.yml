@@ -1,0 +1,26 @@
+spring:
+  main:
+    banner-mode: off
+  datasource:
+    url: jdbc:h2:mem:paybridge;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  h2:
+    console:
+      enabled: false
+  jpa:
+    show-sql: false
+  flyway:
+    clean-disabled: true
+
+paybridge:
+  features:
+    stripe-enabled: false
+    nicepay-enabled: false
+    nicepay-local-only: true
+    unified-checkout-enabled: true
+    operator-api-enabled: true
+  security:
+    operator-username: operator
+    operator-password: operator-change-me

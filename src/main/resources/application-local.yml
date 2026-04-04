@@ -1,0 +1,20 @@
+spring:
+  thymeleaf:
+    cache: false
+  datasource:
+    url: ${PAYBRIDGE_DB_URL:jdbc:postgresql://localhost:5432/paybridge}
+    username: ${PAYBRIDGE_DB_USERNAME:paybridge}
+    password: ${PAYBRIDGE_DB_PASSWORD:paybridge}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    show-sql: false
+  flyway:
+    clean-disabled: true
+
+paybridge:
+  features:
+    stripe-enabled: ${PAYBRIDGE_STRIPE_ENABLED:false}
+    nicepay-enabled: ${PAYBRIDGE_NICEPAY_ENABLED:false}
+    nicepay-local-only: ${PAYBRIDGE_NICEPAY_LOCAL_ONLY:true}
+    unified-checkout-enabled: true
+    operator-api-enabled: true
