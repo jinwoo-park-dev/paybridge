@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PayBridge Error</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="page-shell">
+    <main class="content-grid">
+        <section class="card card--wide">
+            <h1>Something went wrong</h1>
+            <p class="muted">Use the details below to troubleshoot the failed request. API routes return the same information as JSON.</p>
+
+            <dl class="definition-list">
+                <div>
+                    <dt>Status</dt>
+                    <dd th:text="${status}">500</dd>
+                </div>
+                <div>
+                    <dt>Error</dt>
+                    <dd th:text="${error}">Internal Server Error</dd>
+                </div>
+                <div>
+                    <dt>Code</dt>
+                    <dd th:text="${code}">INTERNAL_ERROR</dd>
+                </div>
+                <div>
+                    <dt>Message</dt>
+                    <dd th:text="${message}">An unexpected error occurred.</dd>
+                </div>
+                <div>
+                    <dt>Path</dt>
+                    <dd th:text="${path}">/</dd>
+                </div>
+                <div>
+                    <dt>Correlation ID</dt>
+                    <dd th:text="${correlationId} ?: 'n/a'">n/a</dd>
+                </div>
+            </dl>
+
+            <a class="button button--primary" th:href="@{/}">Return home</a>
+        </section>
+    </main>
+</div>
+</body>
+</html>

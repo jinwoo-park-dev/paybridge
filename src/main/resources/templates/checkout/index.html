@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PayBridge — Checkout</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <script defer th:src="@{/js/app.js}"></script>
+</head>
+<body>
+<div class="page-shell page-shell--narrow">
+    <nav class="top-nav top-nav--inner">
+        <a class="top-nav__brand" th:href="@{/}">PayBridge</a>
+        <div class="top-nav__links">
+            <a th:href="@{/checkout}">Checkout</a>
+            <a th:href="@{/ops/transactions/search}">Transactions</a>
+            <a th:href="@{/swagger-ui/index.html}">API Reference</a>
+            <form th:if="${operatorAuthenticated}" class="top-nav__logout-form" th:action="@{/operator/logout}" method="post">
+                <button class="top-nav__logout-button" type="submit">Operator sign-out</button>
+            </form>
+            <a th:unless="${operatorAuthenticated}" th:href="${operatorLoginUrl}">Operator sign-in</a>
+        </div>
+    </nav>
+
+    <header class="section-hero">
+        <a class="back-link" th:href="@{/}">← Back to home</a>
+        <h1 th:text="${pageTitle}">Choose payment flow</h1>
+        <p class="muted">
+            Choose a provider-specific payment path from one entry page. Stripe is the primary browser checkout route.
+            NicePay remains available as a local operator flow for merchant-hosted approval and cancellation handling.
+        </p>
+    </header>
+
+    <section class="card card--wide card--soft">
+        <div class="detail-grid">
+            <article>
+                <h2>Order context</h2>
+                <dl class="definition-list definition-list--single">
+                    <dt>Order ID</dt>
+                    <dd class="mono" th:text="${sampleOrderId}">ORD-2026-1001</dd>
+                </dl>
+            </article>
+            <article>
+                <h2>How to read this page</h2>
+                <ul class="list">
+                    <li th:each="item : ${selectionNotes}" th:text="${item}">summary</li>
+                </ul>
+            </article>
+        </div>
+    </section>
+
+    <section class="card card--wide">
+        <div class="table-header">
+            <h2>Available payment paths</h2>
+            <span class="muted">Single entry, provider-specific handling</span>
+        </div>
+
+        <div class="provider-grid">
+            <article class="provider-card" th:each="option : ${checkoutOptions}">
+                <div class="table-header">
+                    <h3 th:text="${option.title}">Stripe Payment Element</h3>
+                    <span class="status-pill" th:text="${option.badge}">Primary browser checkout</span>
+                </div>
+
+                <p class="muted" th:text="${option.description}">
+                    Server-created PaymentIntent with Stripe-hosted confirmation.
+                </p>
+
+                <ul class="list">
+                    <li th:each="bullet : ${option.bullets}" th:text="${bullet}">bullet</li>
+                </ul>
+
+                <p class="muted" th:if="${option.operatorOnly}">
+                    Operator sign-in is required when this route is restricted to local use.
+                </p>
+
+                <div class="actions">
+                    <a class="button button--primary"
+                       th:if="${option.enabled}"
+                       th:href="${option.actionUrl}"
+                       th:text="${option.providerCode == 'stripe' ? 'Open Stripe checkout' : 'Open NicePay key-in'}">
+                        Continue
+                    </a>
+
+                    <span class="status status--inactive" th:unless="${option.enabled}">
+                        Requires local configuration
+                    </span>
+                </div>
+            </article>
+        </div>
+    </section>
+</div>
+</body>
+</html>
