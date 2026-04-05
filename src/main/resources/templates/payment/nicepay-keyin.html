@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PayBridge — NicePay key-in</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <script defer th:src="@{/js/app.js}"></script>
+</head>
+<body>
+<div class="page-shell page-shell--narrow">
+    <nav class="top-nav top-nav--inner">
+        <a class="top-nav__brand" th:href="@{/}">PayBridge</a>
+        <div class="top-nav__links">
+            <a th:href="@{/checkout}">Checkout</a>
+            <a th:href="@{/ops/transactions/search}">Transactions</a>
+            <a th:href="@{/swagger-ui/index.html}">API Reference</a>
+            <form th:if="${operatorAuthenticated}" class="top-nav__logout-form" th:action="@{/operator/logout}" method="post">
+                <button class="top-nav__logout-button" type="submit">Operator sign-out</button>
+            </form>
+            <a th:unless="${operatorAuthenticated}" th:href="${operatorLoginUrl}">Operator sign-in</a>
+        </div>
+    </nav>
+
+    <header class="section-hero">
+        <a class="back-link" th:href="@{/checkout}">← Back to checkout</a>
+        <h1>NicePay key-in</h1>
+        <p class="muted">Local operator flow for merchant-hosted approval and cancellation handling.</p>
+    </header>
+
+    <div th:if="${submitError}" class="alert alert--error alert--dismissible" th:text="${submitError}">Provider error.</div>
+    <div class="alert alert--info" th:if="${nicePayLocalOnly}">
+        This route is intended for authenticated local use and provider verification, not public internet card capture.
+    </div>
+    <div class="alert alert--info" th:if="${!nicePayEnabled}">
+        NicePay key-in is unavailable until local feature flags and provider credentials are configured.
+    </div>
+
+    <section class="card card--wide card--soft">
+        <div class="detail-grid">
+            <article>
+                <h2>What this flow covers</h2>
+                <ul class="list">
+                    <li th:each="warning : ${testWarnings}" th:text="${warning}">warning</li>
+                </ul>
+            </article>
+            <article>
+                <h2>Configuration and data handling</h2>
+                <ul class="list">
+                    <li th:each="item : ${providerChecklist}" th:text="${item}">checklist</li>
+                </ul>
+                <dl class="definition-list definition-list--single">
+                    <dt>MID preview</dt>
+                    <dd class="mono" th:text="${merchantIdPreview}">(not configured)</dd>
+                </dl>
+            </article>
+        </div>
+    </section>
+
+    <section class="card card--wide">
+        <form th:action="@{/payments/nicepay/keyin/approve}" th:object="${form}" method="post" autocomplete="off">
+            <div class="form-grid">
+                <label>
+                    <span>Order ID / Moid</span>
+                    <input type="text" th:field="*{orderId}" placeholder="ORD-NP-2026-1001">
+                </label>
+                <label>
+                    <span>Amount (KRW)</span>
+                    <input type="number" th:field="*{amountMinor}" min="1" step="1" placeholder="10000">
+                </label>
+                <label>
+                    <span>Goods / order description</span>
+                    <input type="text" th:field="*{goodsName}" placeholder="Monthly plan renewal">
+                </label>
+                <label>
+                    <span>Buyer name</span>
+                    <input type="text" th:field="*{buyerName}" placeholder="Alex Kim">
+                </label>
+                <label>
+                    <span>Buyer email</span>
+                    <input type="email" th:field="*{buyerEmail}" placeholder="buyer@example.com">
+                </label>
+                <label>
+                    <span>Buyer phone</span>
+                    <input type="text" th:field="*{buyerTel}" inputmode="numeric" placeholder="01012345678">
+                </label>
+                <label>
+                    <span>Card number</span>
+                    <input type="text" id="cardNumber" name="cardNumber" autocomplete="off" inputmode="numeric">
+                </label>
+                <label>
+                    <span>Card expiry (YYMM)</span>
+                    <input type="text" id="cardExpireYyMm" name="cardExpireYyMm" autocomplete="off" inputmode="numeric">
+                </label>
+                <label>
+                    <span>Buyer auth number (YYMMDD or business number)</span>
+                    <input type="text" id="buyerAuthNumber" name="buyerAuthNumber" autocomplete="off" inputmode="numeric">
+                </label>
+                <label>
+                    <span>Card password prefix (optional if supported by the contract)</span>
+                    <input type="password" id="cardPasswordTwoDigits" name="cardPasswordTwoDigits" autocomplete="off" inputmode="numeric">
+                </label>
+                <label>
+                    <span>Interest option</span>
+                    <select th:field="*{cardInterest}">
+                        <option value="0">0 - standard interest</option>
+                        <option value="1">1 - merchant no-interest</option>
+                    </select>
+                </label>
+                <label>
+                    <span>Installment months</span>
+                    <select th:field="*{cardQuota}">
+                        <option value="00">00 - single payment</option>
+                        <option value="02">02 - 2 months</option>
+                        <option value="03">03 - 3 months</option>
+                        <option value="06">06 - 6 months</option>
+                    </select>
+                </label>
+            </div>
+
+            <div class="validation-summary" th:if="${#fields.hasAnyErrors()}">
+                <p class="muted"><strong>Validation errors</strong></p>
+                <ul class="list">
+                    <li th:each="error : ${#fields.errors('*')}" th:text="${error}">Validation message</li>
+                </ul>
+            </div>
+
+            <div class="actions">
+                <button class="button button--primary" type="submit">Submit approval</button>
+                <a class="button button--secondary" th:href="@{/ops/transactions/search}">Open transaction search</a>
+            </div>
+        </form>
+    </section>
+</div>
+</body>
+</html>
