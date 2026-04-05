@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PayBridge — Stripe Checkout</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <script defer th:src="@{/js/app.js}"></script>
+</head>
+<body>
+<div class="page-shell page-shell--narrow">
+    <nav class="top-nav top-nav--inner">
+        <a class="top-nav__brand" th:href="@{/}">PayBridge</a>
+        <div class="top-nav__links">
+            <a th:href="@{/checkout}">Checkout</a>
+            <a th:href="@{/ops/transactions/search}">Transactions</a>
+            <a th:href="@{/swagger-ui/index.html}">API Reference</a>
+            <form th:if="${operatorAuthenticated}" class="top-nav__logout-form" th:action="@{/operator/logout}" method="post">
+                <button class="top-nav__logout-button" type="submit">Operator sign-out</button>
+            </form>
+            <a th:unless="${operatorAuthenticated}" th:href="${operatorLoginUrl}">Operator sign-in</a>
+        </div>
+    </nav>
+
+    <header class="section-hero">
+        <a class="back-link" th:href="@{/checkout}">← Back to checkout</a>
+        <h1>Stripe Payment Element</h1>
+        <p class="muted">Primary browser checkout path: the backend creates the PaymentIntent, Stripe-hosted fields confirm the payment, and PayBridge records the result into the shared payment record.</p>
+    </header>
+
+    <div th:if="${submitError}" class="alert alert--error alert--dismissible" th:text="${submitError}">Provider error.</div>
+    <div class="alert alert--info" th:if="${!stripeEnabled}">
+        Stripe checkout is unavailable until the required local credentials are configured.
+    </div>
+
+    <section class="card card--wide card--soft">
+        <div class="detail-grid">
+            <article>
+                <h2>What this flow covers</h2>
+                <ul class="list">
+                    <li th:each="warning : ${testWarnings}" th:text="${warning}">warning</li>
+                </ul>
+            </article>
+            <article>
+                <h2>Configuration and control points</h2>
+                <ul class="list">
+                    <li th:each="item : ${providerChecklist}" th:text="${item}">checklist</li>
+                </ul>
+                <dl class="definition-list definition-list--single">
+                    <dt>Publishable key preview</dt>
+                    <dd class="mono" th:text="${publishableKeyPreview}">(not configured)</dd>
+                </dl>
+            </article>
+        </div>
+    </section>
+
+    <section class="card card--wide">
+        <form th:action="@{/payments/stripe/payment-intent}" th:object="${form}" method="post">
+            <div class="form-grid">
+                <label>
+                    <span>Order ID</span>
+                    <input type="text" th:field="*{orderId}" placeholder="ORD-STR-2026-1001">
+                </label>
+                <label>
+                    <span>Amount (minor units)</span>
+                    <input type="number" th:field="*{amountMinor}" min="50" step="1" placeholder="1999">
+                </label>
+                <label>
+                    <span>Currency</span>
+                    <input type="text" th:field="*{currency}" maxlength="3" placeholder="USD">
+                </label>
+                <label>
+                    <span>Receipt email</span>
+                    <input type="email" th:field="*{customerEmail}" placeholder="buyer@example.com">
+                </label>
+                <label class="form-grid__full">
+                    <span>Description</span>
+                    <input type="text" th:field="*{description}" placeholder="Monthly plan renewal">
+                </label>
+            </div>
+
+            <div class="validation-summary" th:if="${#fields.hasAnyErrors()}">
+                <p class="muted"><strong>Validation errors</strong></p>
+                <ul class="list">
+                    <li th:each="error : ${#fields.errors('*')}" th:text="${error}">Validation message</li>
+                </ul>
+            </div>
+
+            <div class="actions">
+                <button class="button button--primary" type="submit">Create Stripe PaymentIntent</button>
+                <a class="button button--secondary" th:href="@{/ops/transactions/search}">Open transaction search</a>
+            </div>
+        </form>
+    </section>
+
+    <section class="card card--wide" th:if="${checkout != null}">
+        <div class="table-header">
+            <h2>Ready to confirm payment</h2>
+            <span class="muted" th:text="'PaymentIntent: ' + ${checkout.paymentIntentId()}">payment intent id</span>
+        </div>
+
+        <div class="detail-grid">
+            <article>
+                <h3>Server-created payment summary</h3>
+                <dl class="definition-list">
+                    <dt>Order ID</dt><dd th:text="${checkout.orderId()}">orderId</dd>
+                    <dt>Amount</dt><dd th:text="${checkout.amountDisplay()}">USD 19.99</dd>
+                    <dt>Currency</dt><dd th:text="${checkout.currency()}">USD</dd>
+                    <dt>Description</dt><dd th:text="${checkout.description()}">description</dd>
+                </dl>
+            </article>
+            <article>
+                <h3>Recording sequence</h3>
+                <ol class="list list--ordered">
+                    <li>Backend creates the PaymentIntent and returns a client secret.</li>
+                    <li>Stripe-hosted fields collect card details and confirm the payment in-browser.</li>
+                    <li>Return-page verification records the payment; webhook processing adds asynchronous confirmation and duplicate protection.</li>
+                </ol>
+            </article>
+        </div>
+
+        <form id="stripe-payment-form" class="stripe-form" novalidate>
+            <div id="payment-element" class="stripe-element-shell"></div>
+            <p id="stripe-payment-message" class="stripe-message" aria-live="polite"></p>
+            <div class="actions actions--compact">
+                <button id="stripe-confirm-button" class="button button--primary" type="submit">Confirm Stripe payment</button>
+            </div>
+        </form>
+
+        <div id="stripe-config"
+             th:data-publishable-key="${stripePublishableKey}"
+             th:data-client-secret="${checkout.clientSecret()}"
+             th:data-return-url="${returnUrl}"></div>
+        <script src="https://js.stripe.com/v3/"></script>
+        <script defer th:src="@{/js/stripe-checkout.js}"></script>
+    </section>
+</div>
+</body>
+</html>
