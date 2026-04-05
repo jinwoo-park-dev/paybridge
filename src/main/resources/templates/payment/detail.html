@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PayBridge — Payment Detail</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <script defer th:src="@{/js/app.js}"></script>
+</head>
+<body>
+<div class="page-shell page-shell--narrow">
+    <nav class="top-nav top-nav--inner">
+        <a class="top-nav__brand" th:href="@{/}">PayBridge</a>
+        <div class="top-nav__links">
+            <a th:href="@{/checkout}">Checkout</a>
+            <a th:href="@{/ops/transactions/search}">Transactions</a>
+            <a th:href="@{/swagger-ui/index.html}">API Reference</a>
+            <form class="top-nav__logout-form" th:action="@{/operator/logout}" method="post">
+                <button class="top-nav__logout-button" type="submit">Operator sign-out</button>
+            </form>
+        </div>
+    </nav>
+
+    <header class="section-hero">
+        <a class="back-link" th:href="@{/ops/transactions/search}">← Back to transaction search</a>
+        <h1>Payment Detail</h1>
+        <p class="muted">Recorded payment, provider identifiers, reversal controls, and related JSON endpoints.</p>
+    </header>
+
+    <div th:if="${opsMessage}" class="alert alert--success alert--dismissible" th:text="${opsMessage}">Operation succeeded.</div>
+    <div th:if="${opsError}" class="alert alert--error alert--dismissible" th:text="${opsError}">Operation failed.</div>
+
+    <section class="detail-summary-grid">
+        <article class="metric-card">
+            <span class="metric-card__label">Transaction record</span>
+            <strong class="metric-card__value metric-card__value--mono" th:text="${payment.paymentId()}">paymentId</strong>
+            <p class="metric-card__copy">Internal identifier referenced by transaction, audit, outbox, and reversal records.</p>
+        </article>
+        <article class="metric-card">
+            <span class="metric-card__label">Provider route</span>
+            <strong class="metric-card__value" th:text="${payment.provider()}">STRIPE</strong>
+            <p class="metric-card__copy">Provider-specific identifiers and reversal actions stay visible without leaving the shared payment model.</p>
+        </article>
+        <article class="metric-card">
+            <span class="metric-card__label">Reversible balance</span>
+            <strong class="metric-card__value" th:text="${payment.reversibleAmountDisplay()}">USD 19.99</strong>
+            <p class="metric-card__copy">Remaining amount eligible for refund or cancellation on the current provider path.</p>
+        </article>
+    </section>
+
+    <section class="card card--wide">
+        <div class="detail-grid">
+            <article>
+                <h2>Identifiers and provider linkage</h2>
+                <dl class="definition-list">
+                    <dt>Payment ID</dt><dd class="mono" th:text="${payment.paymentId()}">paymentId</dd>
+                    <dt>Order ID</dt><dd th:text="${payment.orderId()}">orderId</dd>
+                    <dt>Provider</dt><dd th:text="${payment.provider()}">provider</dd>
+                    <dt>Status</dt><dd th:text="${payment.status()}">status</dd>
+                    <dt>Provider payment ID</dt><dd class="mono" th:text="${payment.providerPaymentId()}">providerPaymentId</dd>
+                    <dt>Provider transaction / approval ID</dt><dd class="mono" th:text="${payment.providerTransactionId()}">providerTransactionId</dd>
+                </dl>
+            </article>
+
+            <article>
+                <h2>Current money state</h2>
+                <dl class="definition-list">
+                    <dt>Total amount</dt><dd th:text="${payment.amountDisplay()}">KRW 10,000</dd>
+                    <dt>Reversible amount</dt><dd th:text="${payment.reversibleAmountDisplay()}">KRW 8,000</dd>
+                    <dt>Currency</dt><dd th:text="${payment.currency()}">KRW</dd>
+                    <dt>Approved at</dt><dd th:text="${payment.approvedAtDisplay()}">2026-03-19 22:10:00 UTC</dd>
+                    <dt>Full reversal allowed</dt><dd th:text="${payment.fullReversalAllowed()} ? 'Yes' : 'No'">Yes</dd>
+                    <dt>Partial reversal allowed</dt><dd th:text="${payment.partialReversalAllowed()} ? 'Yes' : 'No'">Yes</dd>
+                </dl>
+            </article>
+        </div>
+    </section>
+
+    <section class="card card--wide">
+        <div class="table-header">
+            <h2>Related JSON endpoints</h2>
+            <span class="muted">Authenticated, read-only operator endpoints</span>
+        </div>
+        <p class="muted">These endpoints expose the transaction, audit, outbox, and Stripe webhook records tied to this payment.</p>
+        <div class="actions">
+            <a class="button button--secondary"
+               th:href="@{/api/ops/transactions/{paymentId}(paymentId=${payment.paymentId()})}">Transaction detail JSON</a>
+            <a class="button button--secondary"
+               th:href="@{/api/ops/transactions}">Transaction search JSON</a>
+            <a class="button button--secondary"
+               th:href="@{/api/ops/transactions/{paymentId}/audit-logs(paymentId=${payment.paymentId()})}">Audit log JSON</a>
+            <a class="button button--secondary"
+               th:href="@{/api/ops/transactions/{paymentId}/outbox-events(paymentId=${payment.paymentId()})}">Outbox event JSON</a>
+            <a class="button button--secondary" th:if="${payment.provider().name() == 'STRIPE'}" th:href="@{/api/ops/stripe-webhooks}">Recent Stripe webhook JSON</a>
+            <a class="button button--secondary" th:href="@{/swagger-ui/index.html}">Open API reference</a>
+        </div>
+    </section>
+
+    <section class="card card--wide" th:if="${payment.provider().name() == 'NICEPAY'}">
+        <div class="table-header">
+            <h2>NicePay cancellation actions</h2>
+            <span class="muted">Provider payment ID stores the NicePay TID. Provider transaction / approval ID stores the approval code when available.</span>
+        </div>
+
+        <div class="ops-action-grid">
+            <form class="card card--tight" th:action="@{'/payments/nicepay/' + ${payment.paymentId()} + '/cancel'}" method="post" data-confirm="Run a full NicePay cancellation for this payment?">
+                <h3>Full cancellation</h3>
+                <p class="muted">Uses the stored NicePay TID to request a full cancellation and records the result in the shared reversal history.</p>
+                <label>
+                    <span>Cancel reason</span>
+                    <input type="text" name="cancelReason" maxlength="100" value="Customer requested full cancellation.">
+                </label>
+                <div class="actions actions--compact">
+                    <button class="button button--primary" type="submit" th:disabled="${!payment.fullReversalAllowed()}">Submit full cancellation</button>
+                </div>
+            </form>
+
+            <form class="card card--tight" th:action="@{'/payments/nicepay/' + ${payment.paymentId()} + '/partial-cancel'}" method="post" data-confirm="Run a partial NicePay cancellation for this payment?">
+                <h3>Partial cancellation</h3>
+                <p class="muted">Requests a partial cancellation against the stored TID. On the test MID, the remaining card limit may need to be released in the merchant portal.</p>
+                <label>
+                    <span>Partial cancel amount (KRW)</span>
+                    <input type="number" name="cancelAmountMinor" min="1" step="1" placeholder="100">
+                </label>
+                <label>
+                    <span>Cancel reason</span>
+                    <input type="text" name="cancelReason" maxlength="100" value="Customer requested partial cancellation.">
+                </label>
+                <div class="actions actions--compact">
+                    <button class="button button--secondary" type="submit" th:disabled="${!payment.partialReversalAllowed()}">Submit partial cancellation</button>
+                </div>
+            </form>
+        </div>
+    </section>
+
+    <section class="card card--wide" th:if="${payment.provider().name() == 'STRIPE'}">
+        <div class="table-header">
+            <h2>Stripe refund actions</h2>
+            <span class="muted">Provider payment ID stores the Stripe PaymentIntent ID. Provider transaction / approval ID stores the latest charge ID when Stripe returns it.</span>
+        </div>
+
+        <div class="ops-action-grid">
+            <form class="card card--tight" th:action="@{'/payments/stripe/' + ${payment.paymentId()} + '/refund'}" method="post" data-confirm="Run a full Stripe refund for this payment?">
+                <h3>Full refund</h3>
+                <p class="muted">Creates a full refund against the stored charge or PaymentIntent and records the result in the shared reversal history.</p>
+                <label>
+                    <span>Refund reason</span>
+                    <input type="text" name="refundReason" maxlength="100" value="Customer requested full refund.">
+                </label>
+                <div class="actions actions--compact">
+                    <button class="button button--primary" type="submit" th:disabled="${!payment.fullReversalAllowed()}">Submit full refund</button>
+                </div>
+            </form>
+
+            <form class="card card--tight" th:action="@{'/payments/stripe/' + ${payment.paymentId()} + '/partial-refund'}" method="post" data-confirm="Run a partial Stripe refund for this payment?">
+                <h3>Partial refund</h3>
+                <p class="muted">Creates a partial refund for an explicit amount and updates the remaining reversible balance after the refund succeeds.</p>
+                <label>
+                    <span>Partial refund amount (minor units)</span>
+                    <input type="number" name="refundAmountMinor" min="1" step="1" placeholder="100">
+                </label>
+                <label>
+                    <span>Refund reason</span>
+                    <input type="text" name="refundReason" maxlength="100" value="Customer requested partial refund.">
+                </label>
+                <div class="actions actions--compact">
+                    <button class="button button--secondary" type="submit" th:disabled="${!payment.partialReversalAllowed()}">Submit partial refund</button>
+                </div>
+            </form>
+        </div>
+    </section>
+
+    <section class="card card--wide">
+        <div class="table-header">
+            <h2>Reversal History</h2>
+            <span class="muted" th:text="'Rows: ' + ${reversalCount}">Rows: 0</span>
+        </div>
+
+        <div th:if="${payment.reversals().isEmpty()}" class="empty-state">
+            <p>No reversals recorded yet.</p>
+            <p class="muted">Refunds and cancellations will appear here with provider references, amount movement, and the remaining reversible balance.</p>
+        </div>
+
+        <div th:unless="${payment.reversals().isEmpty()}" class="table-scroll">
+            <table class="data-table">
+                <thead>
+                <tr>
+                    <th>Reversal ID</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>Amount</th>
+                    <th>Remaining</th>
+                    <th>Reason</th>
+                    <th>Provider Reversal ID</th>
+                    <th>Processed At</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="row : ${payment.reversals()}">
+                    <td class="mono" th:text="${row.reversalId()}">reversalId</td>
+                    <td th:text="${row.reversalType()}">PARTIAL</td>
+                    <td th:text="${row.reversalStatus()}">SUCCEEDED</td>
+                    <td th:text="${row.amountDisplay()}">KRW 2,000</td>
+                    <td th:text="${row.remainingAmountDisplay()}">KRW 8,000</td>
+                    <td th:text="${row.reason()}">Customer requested partial cancellation</td>
+                    <td class="mono" th:text="${row.providerReversalId()}">providerReversalId</td>
+                    <td th:text="${row.processedAtDisplay()}">2026-03-19 22:20:00 UTC</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+</body>
+</html>

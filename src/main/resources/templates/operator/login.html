@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PayBridge — Operator Sign-in</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <script defer th:src="@{/js/app.js}"></script>
+</head>
+<body>
+<div class="page-shell page-shell--narrow page-shell--auth">
+    <nav class="top-nav top-nav--inner">
+        <a class="top-nav__brand" th:href="@{/}">PayBridge</a>
+        <div class="top-nav__links">
+            <a th:href="@{/checkout}">Checkout</a>
+            <a th:href="@{/swagger-ui/index.html}">API Reference</a>
+        </div>
+    </nav>
+
+    <section class="card auth-card">
+        <p class="hero__eyebrow auth-eyebrow">Operator access</p>
+        <h1>Operator sign-in</h1>
+        <p class="muted">
+            Use operator credentials to access transaction search, payment detail, reversal controls, and read-only operational APIs.
+        </p>
+
+        <div class="alert alert--error" th:if="${loginError}">
+            Sign-in failed. Check the configured operator credentials and try again.
+        </div>
+        <div class="alert alert--success" th:if="${loggedOut}">
+            You have been signed out.
+        </div>
+
+        <form th:action="@{/operator/login}" method="post" class="search-form">
+            <div class="form-grid auth-form-grid">
+                <label>
+                    <span>Username</span>
+                    <input type="text" name="username" autocomplete="username" required>
+                </label>
+                <label>
+                    <span>Password</span>
+                    <input type="password" name="password" autocomplete="current-password" required>
+                </label>
+            </div>
+            <div class="actions">
+                <button class="button button--primary" type="submit">Sign in</button>
+                <a class="button button--secondary" th:href="@{/checkout}">Back to checkout</a>
+            </div>
+        </form>
+
+        <section class="card card--soft card--tight auth-hint-card">
+            <h2>Protected routes and APIs</h2>
+            <ul class="list">
+                <li>Transaction search and payment detail pages</li>
+                <li>Refund and cancellation actions from the payment detail page</li>
+                <li>Read-only JSON endpoints for transaction lookup, audit logs, outbox events, and Stripe webhook inspection</li>
+                <li th:if="${nicepayOperatorOnly}">NicePay key-in page when local-only mode is enabled</li>
+            </ul>
+        </section>
+    </section>
+</div>
+</body>
+</html>

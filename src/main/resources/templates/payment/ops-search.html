@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PayBridge — Transaction Search</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <script defer th:src="@{/js/app.js}"></script>
+</head>
+<body class="page-transactions">
+<div class="page-shell page-shell--narrow">
+    <nav class="top-nav top-nav--inner">
+        <a class="top-nav__brand" th:href="@{/}">PayBridge</a>
+        <div class="top-nav__links">
+            <a th:href="@{/checkout}">Checkout</a>
+            <a th:href="@{/ops/transactions/search}">Transactions</a>
+            <a th:href="@{/swagger-ui/index.html}">API Reference</a>
+            <form class="top-nav__logout-form" th:action="@{/operator/logout}" method="post">
+                <button class="top-nav__logout-button" type="submit">Operator sign-out</button>
+            </form>
+        </div>
+    </nav>
+
+    <header class="section-hero">
+        <a class="back-link" th:href="@{/}">← Back to home</a>
+        <h1>Transaction Search</h1>
+        <p class="muted">Search the shared payment record by internal order ID or provider identifiers.</p>
+    </header>
+
+    <section class="card card--wide card--soft">
+        <div class="table-header">
+            <h2>Operational view</h2>
+            <span class="muted" th:text="'Current rows: ' + ${resultCount}">Current rows: 0</span>
+        </div>
+        <p class="muted">Stripe and NicePay approvals appear in one searchable record so operators can compare status, provider IDs, and remaining reversible amount.</p>
+    </section>
+
+    <section class="card card--wide">
+        <form method="get" th:action="@{/ops/transactions/search}" class="search-form">
+            <div class="form-grid">
+                <label>
+                    <span>Order ID</span>
+                    <input type="text" name="orderId" th:value="${criteria.orderId()} ?: ''" placeholder="ORD-2026-1001">
+                </label>
+                <label>
+                    <span>Provider payment ID</span>
+                    <input type="text" name="providerPaymentId" th:value="${criteria.providerPaymentId()} ?: ''" placeholder="pi_... or provider payment id">
+                </label>
+                <label>
+                    <span>Provider transaction / approval ID</span>
+                    <input type="text" name="providerTransactionId" th:value="${criteria.providerTransactionId()} ?: ''" placeholder="charge id, approval code, or TID">
+                </label>
+                <label>
+                    <span>Provider</span>
+                    <select name="provider">
+                        <option value="">All</option>
+                        <option th:each="providerOption : ${providers}"
+                                th:value="${providerOption.name()}"
+                                th:selected="${criteria.provider()} == ${providerOption}"
+                                th:text="${providerOption.name()}">NICEPAY</option>
+                    </select>
+                </label>
+                <label>
+                    <span>Status</span>
+                    <select name="status">
+                        <option value="">All</option>
+                        <option th:each="statusOption : ${statuses}"
+                                th:value="${statusOption.name()}"
+                                th:selected="${criteria.status()} == ${statusOption}"
+                                th:text="${statusOption.name()}">APPROVED</option>
+                    </select>
+                </label>
+            </div>
+            <div class="actions actions--compact">
+                <button class="button button--primary" type="submit">Search</button>
+                <a class="button button--secondary" th:href="@{/ops/transactions/search}">Clear</a>
+            </div>
+        </form>
+    </section>
+
+    <section class="card card--wide">
+        <div class="table-header">
+            <h2>Search Results</h2>
+            <span class="muted" th:text="'Rows: ' + ${resultCount}">Rows: 0</span>
+        </div>
+
+        <div th:if="${results.isEmpty()}" class="empty-state">
+            <p>No payments match the current filters.</p>
+            <p class="muted">Create a payment from checkout or provider pages, then return here to inspect the recorded transaction.</p>
+        </div>
+
+        <div th:unless="${results.isEmpty()}" class="table-scroll">
+            <table class="data-table">
+                <thead>
+                <tr>
+                    <th>Payment ID</th>
+                    <th>Order ID</th>
+                    <th>Provider</th>
+                    <th>Status</th>
+                    <th>Amount</th>
+                    <th>Remaining reversible amount</th>
+                    <th>Provider payment ID</th>
+                    <th>Provider transaction / approval ID</th>
+                    <th>Approved At</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="row : ${results}">
+                    <td><a class="inline-link" th:href="@{/payments/{paymentId}(paymentId=${row.paymentId()})}" th:text="${row.paymentId()}">paymentId</a></td>
+                    <td th:text="${row.orderId()}">orderId</td>
+                    <td><span class="status-pill" th:text="${row.provider()}">provider</span></td>
+                    <td><span class="status-pill" th:text="${row.status()}">APPROVED</span></td>
+                    <td th:text="${row.amountDisplay()}">KRW 10,000</td>
+                    <td th:text="${row.reversibleAmountDisplay()}">KRW 10,000</td>
+                    <td th:text="${row.providerPaymentId()}">providerPaymentId</td>
+                    <td th:text="${row.providerTransactionId()}">providerTransactionId</td>
+                    <td th:text="${row.approvedAtDisplay()}">2026-03-19 22:10:00 UTC</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+</body>
+</html>
