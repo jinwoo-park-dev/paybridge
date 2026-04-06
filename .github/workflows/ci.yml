@@ -1,0 +1,33 @@
+name: paybridge-ci
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Make Gradle Wrapper executable
+        run: chmod +x gradlew
+
+      - name: Verify project with tests
+        env:
+          PAYBRIDGE_NICEPAY_PROVIDER_ENABLED: 'false'
+          PAYBRIDGE_STRIPE_PROVIDER_ENABLED: 'false'
+          PAYBRIDGE_STRIPE_ENABLED: 'false'
+        run: ./gradlew --no-daemon test
