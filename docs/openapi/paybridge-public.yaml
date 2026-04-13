@@ -1,0 +1,737 @@
+openapi: 3.1.0
+info:
+  title: PayBridge Public JSON API
+  version: 0.1.0
+  description: |
+    Checked-in reference for the JSON APIs in PayBridge.
+
+    This file intentionally focuses on JSON endpoints that are useful during
+    code review and local verification:
+    - system metadata
+    - operator transaction and activity APIs
+    - Stripe webhook intake
+
+    Server-rendered HTML routes under `/`, `/checkout`, `/operator/*`,
+    and `/payments/*` are intentionally excluded.
+servers:
+  - url: http://localhost:8080
+tags:
+  - name: System
+    description: Runtime metadata and small environment-verification endpoints.
+  - name: Operator Transactions
+    description: Read-only transaction search, detail, and export endpoints for operator tooling.
+  - name: Operator Activity
+    description: Read-only audit, outbox, and Stripe webhook inspection endpoints.
+  - name: Stripe Webhooks
+    description: Verified Stripe webhook intake with duplicate suppression.
+paths:
+  /api/system/info:
+    get:
+      tags:
+        - System
+      summary: Get service metadata
+      operationId: getSystemInfo
+      responses:
+        '200':
+          description: Service metadata returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemInfoResponse'
+
+  /api/ops/transactions:
+    get:
+      tags:
+        - Operator Transactions
+      summary: Search transactions
+      operationId: searchTransactions
+      security:
+        - basicAuth: []
+      parameters:
+        - in: query
+          name: orderId
+          description: Case-insensitive partial match against the internal order id.
+          schema:
+            type: string
+        - in: query
+          name: providerPaymentId
+          description: Case-insensitive partial match against the provider payment id.
+          schema:
+            type: string
+        - in: query
+          name: providerTransactionId
+          description: Case-insensitive partial match against the provider transaction id.
+          schema:
+            type: string
+        - in: query
+          name: provider
+          description: Filter by payment provider.
+          schema:
+            $ref: '#/components/schemas/PaymentProvider'
+        - in: query
+          name: status
+          description: Filter by payment status.
+          schema:
+            $ref: '#/components/schemas/PaymentStatus'
+      responses:
+        '200':
+          description: Matching transactions returned.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TransactionSummaryView'
+        '401':
+          description: Operator authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+  /api/ops/transactions/{paymentId}:
+    get:
+      tags:
+        - Operator Transactions
+      summary: Get a transaction detail
+      operationId: getTransactionDetail
+      security:
+        - basicAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PaymentId'
+      responses:
+        '200':
+          description: Transaction detail returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentDetailView'
+        '401':
+          description: Operator authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '404':
+          description: The payment id was not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+  /api/ops/transactions/{paymentId}/audit-logs:
+    get:
+      tags:
+        - Operator Activity
+      summary: Get audit log entries for a payment
+      operationId: getAuditLogsForPayment
+      security:
+        - basicAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PaymentId'
+      responses:
+        '200':
+          description: Audit log entries returned.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AuditLogView'
+        '401':
+          description: Operator authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+  /api/ops/transactions/{paymentId}/outbox-events:
+    get:
+      tags:
+        - Operator Activity
+      summary: Get outbox events for a payment
+      operationId: getOutboxEventsForPayment
+      security:
+        - basicAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PaymentId'
+      responses:
+        '200':
+          description: Outbox events returned.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OutboxEventView'
+        '401':
+          description: Operator authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+  /api/ops/stripe-webhooks:
+    get:
+      tags:
+        - Operator Activity
+      summary: Get recent Stripe webhook events
+      operationId: getRecentStripeWebhookEvents
+      security:
+        - basicAuth: []
+      responses:
+        '200':
+          description: Recent webhook events returned.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StripeWebhookEventView'
+        '401':
+          description: Operator authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+  /api/providers/stripe/webhooks:
+    post:
+      tags:
+        - Stripe Webhooks
+      summary: Receive a Stripe webhook event
+      operationId: handleStripeWebhook
+      description: |
+        Verifies the Stripe signature, suppresses duplicates, records audit and
+        outbox state, and returns a compact acknowledgement payload.
+      parameters:
+        - in: header
+          name: Stripe-Signature
+          required: true
+          description: Stripe-generated signature header.
+          schema:
+            type: string
+      requestBody:
+        required: true
+        description: Raw Stripe event payload forwarded as JSON.
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+            examples:
+              paymentIntentSucceeded:
+                summary: payment_intent.succeeded
+                value:
+                  id: evt_123
+                  type: payment_intent.succeeded
+                  data:
+                    object:
+                      id: pi_123
+      responses:
+        '200':
+          description: Webhook accepted and either processed or marked duplicate.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StripeWebhookAcknowledgementResponse'
+        '400':
+          description: Payload validation or Stripe signature verification failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '503':
+          description: Stripe webhook handling is not configured for the current environment.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+components:
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+
+  parameters:
+    PaymentId:
+      in: path
+      name: paymentId
+      required: true
+      description: Internal PayBridge payment identifier.
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    SystemInfoResponse:
+      type: object
+      required:
+        - service
+        - project
+        - releaseVersion
+        - frontendChoice
+        - architectureStyle
+        - unifiedCheckoutEnabled
+        - operatorApiEnabled
+        - activeProfiles
+      properties:
+        service:
+          type: string
+          example: paybridge
+        project:
+          type: string
+          example: PayBridge — Payment Orchestration Service
+        releaseVersion:
+          type: string
+          example: 0.1.0
+        frontendChoice:
+          type: string
+          example: Spring MVC + server-rendered pages + minimal JS
+        architectureStyle:
+          type: string
+          example: Modular Monolith
+        unifiedCheckoutEnabled:
+          type: boolean
+          example: true
+        operatorApiEnabled:
+          type: boolean
+          example: true
+        activeProfiles:
+          type: array
+          items:
+            type: string
+          example:
+            - local
+
+    TransactionSummaryView:
+      type: object
+      required:
+        - paymentId
+        - orderId
+        - provider
+        - status
+        - amountDisplay
+        - reversibleAmountDisplay
+        - providerPaymentId
+        - providerTransactionId
+        - approvedAtDisplay
+      properties:
+        paymentId:
+          type: string
+          format: uuid
+        orderId:
+          type: string
+          example: ORD-STR-2026-1001
+        provider:
+          $ref: '#/components/schemas/PaymentProvider'
+        status:
+          $ref: '#/components/schemas/PaymentStatus'
+        amountDisplay:
+          type: string
+          example: USD 19.99
+        reversibleAmountDisplay:
+          type: string
+          example: USD 19.99
+        providerPaymentId:
+          type: string
+          example: pi_3Qexample123
+        providerTransactionId:
+          type: string
+          example: ch_3Qexample123
+        approvedAtDisplay:
+          type: string
+          example: 2026-03-19 22:20:00 UTC
+
+    PaymentDetailView:
+      type: object
+      required:
+        - paymentId
+        - orderId
+        - provider
+        - status
+        - amountDisplay
+        - reversibleAmountDisplay
+        - currency
+        - providerPaymentId
+        - providerTransactionId
+        - approvedAtDisplay
+        - fullReversalAllowed
+        - partialReversalAllowed
+        - reversals
+      properties:
+        paymentId:
+          type: string
+          format: uuid
+        orderId:
+          type: string
+          example: ORD-STR-2026-1001
+        provider:
+          $ref: '#/components/schemas/PaymentProvider'
+        status:
+          $ref: '#/components/schemas/PaymentStatus'
+        amountDisplay:
+          type: string
+          example: USD 19.99
+        reversibleAmountDisplay:
+          type: string
+          example: USD 10.00
+        currency:
+          type: string
+          example: USD
+        providerPaymentId:
+          type: string
+          example: pi_3Qexample123
+        providerTransactionId:
+          type: string
+          example: ch_3Qexample123
+        approvedAtDisplay:
+          type: string
+          example: 2026-03-19 22:20:00 UTC
+        fullReversalAllowed:
+          type: boolean
+          example: true
+        partialReversalAllowed:
+          type: boolean
+          example: true
+        reversals:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaymentReversalView'
+
+    PaymentReversalView:
+      type: object
+      required:
+        - reversalId
+        - reversalType
+        - reversalStatus
+        - amountDisplay
+        - remainingAmountDisplay
+        - reason
+        - providerReversalId
+        - processedAtDisplay
+      properties:
+        reversalId:
+          type: string
+          format: uuid
+        reversalType:
+          $ref: '#/components/schemas/ReversalType'
+        reversalStatus:
+          $ref: '#/components/schemas/ReversalStatus'
+        amountDisplay:
+          type: string
+          example: USD 9.99
+        remainingAmountDisplay:
+          type: string
+          example: USD 10.00
+        reason:
+          type: string
+          example: Customer requested a partial refund.
+        providerReversalId:
+          type: string
+          example: re_3Qexample123
+        processedAtDisplay:
+          type: string
+          example: 2026-03-19 22:25:00 UTC
+
+    AuditLogView:
+      type: object
+      required:
+        - id
+        - action
+        - outcome
+        - resourceType
+        - actorType
+        - message
+        - detailJson
+        - occurredAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        action:
+          $ref: '#/components/schemas/AuditAction'
+        outcome:
+          $ref: '#/components/schemas/AuditOutcome'
+        resourceType:
+          type: string
+          example: payment
+        resourceId:
+          type:
+            - string
+            - 'null'
+          example: 123e4567-e89b-12d3-a456-426614174000
+        provider:
+          oneOf:
+            - $ref: '#/components/schemas/PaymentProvider'
+            - type: 'null'
+        actorType:
+          type: string
+          example: stripe
+        correlationId:
+          type:
+            - string
+            - 'null'
+          example: 8b96b8f4-1dd4-4cbc-9ca8-c0aef7b23d5f
+        message:
+          type: string
+          example: Payment approval recorded.
+        detailJson:
+          type: string
+          example: '{"orderId":"ORD-STR-2026-1001","amountMinor":1999}'
+        occurredAt:
+          type: string
+          format: date-time
+
+    OutboxEventView:
+      type: object
+      required:
+        - id
+        - aggregateType
+        - aggregateId
+        - eventType
+        - status
+        - retryCount
+        - availableAt
+        - payloadJson
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        aggregateType:
+          type: string
+          example: payment
+        aggregateId:
+          type: string
+          example: 123e4567-e89b-12d3-a456-426614174000
+        eventType:
+          $ref: '#/components/schemas/OutboxEventType'
+        status:
+          $ref: '#/components/schemas/OutboxEventStatus'
+        retryCount:
+          type: integer
+          example: 0
+        availableAt:
+          type: string
+          format: date-time
+        publishedAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        lastError:
+          type:
+            - string
+            - 'null'
+        payloadJson:
+          type: string
+          example: '{"paymentId":"123e4567-e89b-12d3-a456-426614174000","provider":"STRIPE"}'
+        createdAt:
+          type: string
+          format: date-time
+
+    StripeWebhookEventView:
+      type: object
+      required:
+        - id
+        - provider
+        - providerEventId
+        - eventType
+        - signatureVerified
+        - processingStatus
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        provider:
+          $ref: '#/components/schemas/PaymentProvider'
+        providerEventId:
+          type: string
+          example: evt_123
+        eventType:
+          type: string
+          example: payment_intent.succeeded
+        signatureVerified:
+          type: boolean
+          example: true
+        processingStatus:
+          $ref: '#/components/schemas/StripeWebhookProcessingStatus'
+        correlationId:
+          type:
+            - string
+            - 'null'
+          example: 8b96b8f4-1dd4-4cbc-9ca8-c0aef7b23d5f
+        lastError:
+          type:
+            - string
+            - 'null'
+        processedAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+
+    StripeWebhookAcknowledgementResponse:
+      type: object
+      required:
+        - received
+        - duplicate
+        - eventId
+        - eventType
+        - processingStatus
+      properties:
+        received:
+          type: boolean
+          example: true
+        duplicate:
+          type: boolean
+          example: false
+        eventId:
+          type: string
+          example: evt_123
+        eventType:
+          type: string
+          example: payment_intent.succeeded
+        processingStatus:
+          type: string
+          example: PROCESSED
+
+    ApiErrorResponse:
+      type: object
+      required:
+        - timestamp
+        - status
+        - error
+        - code
+        - message
+        - path
+        - correlationId
+        - fieldViolations
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: integer
+          example: 400
+        error:
+          type: string
+          example: Bad Request
+        code:
+          $ref: '#/components/schemas/ErrorCode'
+        message:
+          type: string
+          example: Request validation failed.
+        path:
+          type: string
+          example: /api/providers/stripe/webhooks
+        correlationId:
+          type: string
+          example: 8b96b8f4-1dd4-4cbc-9ca8-c0aef7b23d5f
+        fieldViolations:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApiFieldViolation'
+
+    ApiFieldViolation:
+      type: object
+      required:
+        - field
+        - message
+      properties:
+        field:
+          type: string
+          example: amountMinor
+        message:
+          type: string
+          example: Amount (minor units) must be positive.
+        rejectedValue:
+          type:
+            - string
+            - 'null'
+          example: "-1"
+
+    ErrorCode:
+      type: string
+      enum:
+        - VALIDATION_ERROR
+        - RESOURCE_NOT_FOUND
+        - CONFLICT
+        - BAD_REQUEST
+        - PROVIDER_ERROR
+        - INTERNAL_ERROR
+
+    PaymentProvider:
+      type: string
+      enum:
+        - NICEPAY
+        - STRIPE
+
+    PaymentStatus:
+      type: string
+      enum:
+        - READY
+        - APPROVED
+        - PARTIALLY_REVERSED
+        - FULLY_REVERSED
+        - FAILED
+
+    ReversalType:
+      type: string
+      enum:
+        - FULL
+        - PARTIAL
+
+    ReversalStatus:
+      type: string
+      enum:
+        - SUCCEEDED
+        - FAILED
+
+    AuditAction:
+      type: string
+      enum:
+        - PAYMENT_APPROVED
+        - PAYMENT_FULL_REVERSAL_RECORDED
+        - PAYMENT_PARTIAL_REVERSAL_RECORDED
+        - STRIPE_WEBHOOK_RECEIVED
+        - STRIPE_WEBHOOK_PROCESSED
+        - STRIPE_WEBHOOK_DUPLICATE
+        - STRIPE_WEBHOOK_REJECTED
+
+    AuditOutcome:
+      type: string
+      enum:
+        - SUCCESS
+        - FAILURE
+        - INFO
+
+    OutboxEventType:
+      type: string
+      enum:
+        - PAYMENT_APPROVED
+        - PAYMENT_FULLY_REVERSED
+        - PAYMENT_PARTIALLY_REVERSED
+        - STRIPE_WEBHOOK_ACKNOWLEDGED
+
+    OutboxEventStatus:
+      type: string
+      enum:
+        - PENDING
+        - PUBLISHED
+        - FAILED
+
+    StripeWebhookProcessingStatus:
+      type: string
+      enum:
+        - RECEIVED
+        - PROCESSED
+        - DUPLICATE
+        - REJECTED
+        - FAILED

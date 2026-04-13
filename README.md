@@ -2,12 +2,12 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-PayBridge is a backend-heavy personal project that keeps one payment lifecycle across two very different providers while preserving provider-specific behavior at the module boundary.
+PayBridge is a backend heavy personal project that keeps one payment lifecycle across two very different providers while preserving provider specific behavior at the module boundary.
 
 PayBridge keeps one payment lifecycle across two very different providers:
 
-- **Stripe** — PaymentIntents, Payment Element confirmation, refunds, and webhooks
-- **NicePay** — a merchant-hosted keyed-entry card flow, EUC-KR form posting, provider-specific signing, and cancellation APIs
+- **Stripe**: PaymentIntents, Payment Element confirmation, refunds, and webhooks
+- **NicePay**: a merchant hosted keyed-entry card flow, EUC-KR form posting, provider specific signing, and cancellation APIs
 
 The point of the project is not “how do I call two payment SDKs?” It is “how do I keep approval, reversal, and transaction visibility consistent when provider behavior is not symmetric?”
 
@@ -16,7 +16,7 @@ The point of the project is not “how do I call two payment SDKs?” It is “h
 - [Demo walkthrough](#demo-walkthrough)
 - [Why I built this](#why-i-built-this)
 - [What this project demonstrates](#what-this-project-demonstrates)
-- [Architecture at a glance](#architecture-at-a-glance)
+- [Tech Stack](#tech-stack)
 - [System overview](#system-overview)
 - [Why Stripe and NicePay together matter](#why-stripe-and-nicepay-together-matter)
 - [Main flows](#main-flows)
@@ -27,10 +27,7 @@ The point of the project is not “how do I call two payment SDKs?” It is “h
 - [Manual smoke test](#manual-smoke-test)
 - [Reliability and security highlights](#reliability-and-security-highlights)
 - [Testing](#testing)
-- [Design decisions worth discussing](#design-decisions-worth-discussing)
 - [Additional docs](#additional-docs)
-- [Scope and non-goals](#scope-and-non-goals)
-- [Note](#note)
 
 ---
 
@@ -49,12 +46,12 @@ The point of the project is not “how do I call two payment SDKs?” It is “h
 ---
 ## Why I built this
 
-I built PayBridge to show how I think about real payment-system problems as a backend engineer. The project is informed by early-career work around keyed-entry card payments and by wanting a portfolio project that contrasts that model with Stripe’s PaymentIntent + webhook approach.
+I built PayBridge to show how I think about real payment system problems as a backend engineer. The project is informed by early career work around keyed-entry card payments and by wanting a portfolio project that contrasts that model with Stripe’s PaymentIntent + webhook approach.
 
 That combination makes the project useful for two kinds of roles:
 
-- **Payment / fintech backend roles** — because it deals with provider heterogeneity, reversal semantics, idempotency, webhook retries, auditability, and operational traceability
-- **General backend / SWE roles** — because it shows modular design, transactional consistency, clear boundaries, local developer experience, testing, and API/UI integration in one repository
+- **Payment / fintech backend roles**: because it deals with provider heterogeneity, reversal semantics, idempotency, webhook retries, auditability, and operational traceability
+- **General backend / SWE roles**: because it shows modular design, transactional consistency, clear boundaries, local developer experience, testing, and API/UI integration in one repository
 
 ---
 ## What this project demonstrates
@@ -63,7 +60,7 @@ That combination makes the project useful for two kinds of roles:
 
 - A **shared payment and reversal model** across providers with very different approval and reversal contracts
 - **Idempotent write paths** for approvals and reversals
-- **Duplicate-safe Stripe webhook handling** using signature verification plus provider-scoped uniqueness
+- **Duplicate safe Stripe webhook handling** using signature verification plus provider-scoped uniqueness
 - An explicit **provider boundary** so Stripe and NicePay differences stay inside provider modules and transport/client code instead of leaking into the shared payment model
 - Practical handling of **partial reversals**, **provider identifiers**, and **operator-facing transaction inspection**
 
@@ -71,13 +68,14 @@ That combination makes the project useful for two kinds of roles:
 
 - A **modular monolith** with packages organized around domain, provider, and operator boundaries
 - Consistent transactional side effects through **audit logs** and a **transactional outbox**
-- A small but realistic **read-only operator API** plus server-rendered pages for manual workflows
+- A small but realistic **read-only operator API** plus server rendered pages for manual workflows
+- A **machine readable transaction export endpoint** that keeps companion reconciliation tooling out of the payment service database
 - Clear **configuration, feature flags, security defaults, and local run paths**
 - Shared **cross-cutting support** for validation, error handling, logging, metrics, masking, and correlation IDs
 - Coverage across **unit, MVC/controller, and PostgreSQL/Testcontainers integration tests**
 
 ---
-## Architecture at a glance
+## Tech Stack
 
 | Category | Choice |
 | --- | --- |
@@ -146,7 +144,7 @@ That combination makes the project useful for two kinds of roles:
 1. Search by order id or provider identifiers at `/ops/transactions/search`.
 2. Open `/payments/{paymentId}` to inspect lifecycle state and reversal history.
 3. Use refund/cancel actions from the detail page.
-4. Review related JSON endpoints for transactions, audit logs, outbox events, and recent Stripe webhooks.
+4. Review related JSON endpoints for transactions, machine-readable export, audit logs, outbox events, and recent Stripe webhooks.
 
 ---
 ## Repository map
@@ -222,6 +220,7 @@ See [`.env.example`](.env.example) and [`src/main/resources/application.yml`](sr
 | `/ops/transactions/search` | Transaction search | Operator |
 | `/payments/{paymentId}` | Payment detail + reversal actions | Operator |
 | `/api/ops/transactions` | Read-only transaction search JSON API | Operator in local/dev; disabled in prod profile |
+| `/api/ops/transactions/export` | Machine-readable transaction export JSON API with paging and approved-at filters | Operator in local/dev; disabled in prod profile |
 | `/api/ops/transactions/{paymentId}` | Read-only transaction detail JSON API | Operator in local/dev; disabled in prod profile |
 | `/api/ops/transactions/{paymentId}/audit-logs` | Audit log JSON API | Operator in local/dev; disabled in prod profile |
 | `/api/ops/transactions/{paymentId}/outbox-events` | Outbox JSON API | Operator in local/dev; disabled in prod profile |
@@ -278,7 +277,8 @@ The snapshots below highlight the checkout selection page and representative pay
 4. Execute a Stripe partial refund and verify that reversal history updates.
 5. Search by `orderId` at `/ops/transactions/search`.
 6. If NicePay local credentials are configured, run a keyed-entry approval and then a full or partial cancellation.
-7. Review `/api/ops/transactions/{paymentId}/audit-logs` and `/api/ops/transactions/{paymentId}/outbox-events`.
+7. Review `/api/ops/transactions/export` for raw reconciliation-friendly fields and pagination.
+8. Review `/api/ops/transactions/{paymentId}/audit-logs` and `/api/ops/transactions/{paymentId}/outbox-events`.
 
 A more detailed checklist lives in [`docs/runbooks/local-operator-runbook.md`](docs/runbooks/local-operator-runbook.md).
 
@@ -307,41 +307,13 @@ The project includes:
 GitHub Actions runs the Gradle test suite on push and pull request.
 
 ---
-## Design decisions worth discussing
+## Additional docs
 
 - [ADR-001 — modular monolith and provider boundaries](docs/adr/ADR-001-modular-monolith-and-provider-boundaries.md)
 - [ADR-002 — outbox-first eventing](docs/adr/ADR-002-outbox-first-over-broker.md)
 - [ADR-003 — server-rendered operator UI](docs/adr/ADR-003-server-rendered-operator-ui.md)
-
----
-## Additional docs
-
-- [Technical project overview](docs/project-notes/paybridge-project-overview.md)
-- [Local runbook](docs/runbooks/local-operator-runbook.md)
-- [OpenAPI notes](docs/openapi/README.md)
 - [Checked-in OpenAPI spec](docs/openapi/paybridge-public.yaml)
 
----
-## Scope and non-goals
 
-PayBridge intentionally focuses on approval and reversal flows. It does **not** currently model:
 
-- settlement and reconciliation
-- disputes and chargebacks
-- recurring billing and subscription management
-- broker dispatch beyond persisted outbox rows
-- production deployment and infrastructure automation
-- multi-tenant auth, roles, or back-office entitlements
-
----
-## Note
-
-This repository is a portfolio project, not a claim of a production-ready payment gateway.
-
-In particular:
-
-- the NicePay keyed-entry page exists to model a provider-specific local/test flow
-- raw card values are not intentionally persisted or logged
-- the project should **not** be interpreted as end-to-end PCI implementation guidance
-- security and reliability decisions are included to show engineering judgment, not to overstate production readiness
 
