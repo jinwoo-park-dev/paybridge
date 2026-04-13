@@ -3,11 +3,14 @@ package com.paybridge.operator.api;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.paybridge.payment.application.PaymentDetailView;
 import com.paybridge.payment.application.PaymentQueryApplicationService;
 import com.paybridge.payment.application.PaymentReversalView;
+import com.paybridge.payment.application.TransactionExportPageView;
+import com.paybridge.payment.application.TransactionExportView;
 import com.paybridge.payment.application.TransactionSummaryView;
 import com.paybridge.payment.domain.PaymentProvider;
 import com.paybridge.payment.domain.PaymentStatus;
@@ -15,6 +18,7 @@ import com.paybridge.payment.domain.ReversalStatus;
 import com.paybridge.payment.domain.ReversalType;
 import com.paybridge.support.config.PayBridgeProperties;
 import com.paybridge.support.error.ErrorResponseFactory;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -64,6 +68,49 @@ class OperatorTransactionsApiControllerTest {
     }
 
     @Test
+    void returnsMachineReadableTransactionExport() throws Exception {
+        TransactionExportPageView exportPage = new TransactionExportPageView(
+                List.of(
+                        new TransactionExportView(
+                                UUID.fromString("11111111-1111-1111-1111-111111111111"),
+                                "ORD-2001",
+                                PaymentProvider.STRIPE,
+                                PaymentStatus.APPROVED,
+                                1_999L,
+                                1_999L,
+                                "USD",
+                                "pi_123",
+                                "ch_123",
+                                Instant.parse("2026-03-21T12:00:00Z"),
+                                Instant.parse("2026-03-21T12:00:01Z"),
+                                Instant.parse("2026-03-21T12:00:02Z")
+                        )
+                ),
+                0,
+                200,
+                false
+        );
+
+        given(paymentQueryApplicationService.export(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq(0), org.mockito.ArgumentMatchers.eq(200)))
+                .willReturn(exportPage);
+
+        mockMvc.perform(get("/api/ops/transactions/export")
+                        .param("approvedFrom", "2026-03-21T00:00:00Z")
+                        .param("approvedTo", "2026-03-22T00:00:00Z"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"amountMinor\":1999")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"approvedAt\":\"2026-03-21T12:00:00Z\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"page\":0")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"size\":200")));
+    }
+
+    @Test
+    void rejectsOversizedTransactionExportPageRequest() throws Exception {
+        mockMvc.perform(get("/api/ops/transactions/export").param("size", "501"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void returnsTransactionDetail() throws Exception {
         UUID paymentId = UUID.fromString("11111111-1111-1111-1111-111111111111");
 
@@ -100,6 +147,8 @@ class OperatorTransactionsApiControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("\"orderId\":\"ORD-2001\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("\"provider\":\"NICEPAY\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"reversals\"")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"reversals\"")))
+                .andExpect(jsonPath("$.reversals[0].status").value("SUCCEEDED"))
+                .andExpect(jsonPath("$.reversals[0].reversalStatus").doesNotExist());
     }
 }
