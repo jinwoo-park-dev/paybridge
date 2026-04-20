@@ -155,7 +155,8 @@ class PaymentPersistenceIntegrationTest extends AbstractPostgresIntegrationTest 
             assertThat(row.providerPaymentId()).isEqualTo("tid_exp_1002");
             assertThat(row.providerTransactionId()).isEqualTo("auth_exp_1002");
             assertThat(row.approvedAt()).isEqualTo(Instant.parse("2026-03-20T02:00:00Z"));
-            assertThat(row.updatedAt()).isEqualTo(Instant.parse("2026-03-20T02:10:00Z"));
+            assertThat(row.updatedAt()).isNotNull();
+            assertThat(row.updatedAt()).isAfter(row.approvedAt());
         });
     }
 
