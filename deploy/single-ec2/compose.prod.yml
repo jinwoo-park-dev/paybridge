@@ -1,0 +1,66 @@
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: paybridge-caddy
+    restart: unless-stopped
+    environment:
+      PAYBRIDGE_DOMAIN: ${PAYBRIDGE_DOMAIN:?Set PAYBRIDGE_DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - paybridge
+    networks:
+      - paybridge-network
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: paybridge-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${PAYBRIDGE_DB_NAME:-paybridge}
+      POSTGRES_USER: ${PAYBRIDGE_DB_USERNAME:?Set PAYBRIDGE_DB_USERNAME}
+      POSTGRES_PASSWORD: ${PAYBRIDGE_DB_PASSWORD:?Set PAYBRIDGE_DB_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    networks:
+      - paybridge-network
+
+  paybridge:
+    image: ${PAYBRIDGE_IMAGE:?Set PAYBRIDGE_IMAGE}
+    container_name: paybridge-app
+    restart: unless-stopped
+    env_file:
+      - .env.prod
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      PAYBRIDGE_DB_URL: jdbc:postgresql://postgres:5432/${PAYBRIDGE_DB_NAME:-paybridge}
+      PAYBRIDGE_DB_USERNAME: ${PAYBRIDGE_DB_USERNAME:?Set PAYBRIDGE_DB_USERNAME}
+      PAYBRIDGE_DB_PASSWORD: ${PAYBRIDGE_DB_PASSWORD:?Set PAYBRIDGE_DB_PASSWORD}
+      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--XX:MaxRAMPercentage=65 -XX:InitialRAMPercentage=25 -XX:+UseContainerSupport}
+    expose:
+      - "8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - paybridge-network
+
+volumes:
+  postgres-data:
+  caddy-data:
+  caddy-config:
+
+networks:
+  paybridge-network:
+    driver: bridge

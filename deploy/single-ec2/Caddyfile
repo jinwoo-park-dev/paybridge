@@ -1,0 +1,12 @@
+{$PAYBRIDGE_DOMAIN} {
+    encode zstd gzip
+
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        Referrer-Policy no-referrer
+        -Server
+    }
+
+    reverse_proxy paybridge:8080
+}
