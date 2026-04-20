@@ -1,0 +1,111 @@
+name: paybridge-single-ec2-deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: Optional image tag override. Defaults to the commit SHA.
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  test-build-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+      ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY || 'paybridge' }}
+      EC2_INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
+      SSM_PATH: ${{ vars.SSM_PATH || '/paybridge/prod' }}
+      DEPLOY_DIR: ${{ vars.DEPLOY_DIR || '/opt/paybridge' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Make Gradle Wrapper executable
+        run: chmod +x gradlew
+
+      - name: Verify project with tests
+        env:
+          PAYBRIDGE_NICEPAY_PROVIDER_ENABLED: 'false'
+          PAYBRIDGE_STRIPE_PROVIDER_ENABLED: 'false'
+          PAYBRIDGE_STRIPE_ENABLED: 'false'
+        run: ./gradlew --no-daemon test
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Validate deployment variables
+        run: |
+          test -n "${EC2_INSTANCE_ID}" || { echo "EC2_INSTANCE_ID repository variable is required" >&2; exit 1; }
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set image tag
+        id: image
+        run: |
+          TAG="${{ github.event.inputs.image_tag }}"
+          if [ -z "${TAG}" ]; then
+            TAG="${GITHUB_SHA}"
+          fi
+          IMAGE="${{ steps.ecr-login.outputs.registry }}/${ECR_REPOSITORY}:${TAG}"
+          echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up QEMU for ARM64 builds
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push ARM64 image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/arm64
+          push: true
+          tags: |
+            ${{ steps.image.outputs.image }}
+            ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+
+      - name: Deploy image on EC2 through SSM
+        run: |
+          cat > /tmp/paybridge-ssm-parameters.json <<JSON
+          {
+            "commands": [
+              "set -euo pipefail",
+              "cd ${DEPLOY_DIR}",
+              "AWS_REGION=${AWS_REGION} SSM_PATH=${SSM_PATH} PAYBRIDGE_IMAGE=${{ steps.image.outputs.image }} ./scripts/deploy.sh"
+            ]
+          }
+          JSON
+          COMMAND_ID=$(aws ssm send-command \
+            --document-name "AWS-RunShellScript" \
+            --instance-ids "${EC2_INSTANCE_ID}" \
+            --comment "Deploy PayBridge Docker Compose stack" \
+            --parameters file:///tmp/paybridge-ssm-parameters.json \
+            --query "Command.CommandId" \
+            --output text)
+          aws ssm wait command-executed --command-id "${COMMAND_ID}" --instance-id "${EC2_INSTANCE_ID}"
+
+      - name: Smoke test
+        run: |
+          DOMAIN=$(aws ssm get-parameter --name "${SSM_PATH}/app/domain" --query "Parameter.Value" --output text)
+          curl --fail --retry 6 --retry-delay 10 "https://${DOMAIN}/actuator/health"
