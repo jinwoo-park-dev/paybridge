@@ -48,3 +48,8 @@ replay_pid*
 # OS metadata
 .DS_Store
 Thumbs.db
+
+# Production demo runtime files
+/deploy/single-ec2/.env.prod
+/deploy/single-ec2/.env.prod.*
+/deploy/single-ec2/backups/
