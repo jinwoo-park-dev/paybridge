@@ -52,14 +52,19 @@ public class StripePaymentIntentApplicationService {
                 "paybridge-stripe-intent-" + command.orderId().trim()
         );
         StripePaymentIntentResponse response = stripeApiClient.createPaymentIntent(request);
-        String clientSecret = requireText(response.clientSecret(), "Stripe PaymentIntent client_secret");
+        boolean confirmationRequired = isBrowserConfirmationRequired(response.status());
+        String clientSecret = confirmationRequired
+                ? requireText(response.clientSecret(), "Stripe PaymentIntent client_secret")
+                : nullSafe(response.clientSecret());
         return new StripeCheckoutPageView(
                 response.id(),
                 clientSecret,
                 command.orderId().trim(),
                 MoneyDisplayFormatter.formatMinor(response.currency(), response.amountMinor()),
                 response.currency(),
-                command.description()
+                command.description(),
+                response.status(),
+                confirmationRequired
         );
     }
 
@@ -85,7 +90,7 @@ public class StripePaymentIntentApplicationService {
         );
 
         if (reservation.decision() == IdempotencyDecision.REPLAY && reservation.resultPaymentId() != null) {
-            return new StripePaymentConfirmationOutcome(reservation.resultPaymentId(), true, paymentIntent.id(), paymentIntent.status());
+            return confirmationOutcome(reservation.resultPaymentId(), true, paymentIntent, orderId);
         }
         if (reservation.decision() == IdempotencyDecision.CONFLICT) {
             throw new PayBridgeException(HttpStatus.CONFLICT, ErrorCode.CONFLICT, "A different Stripe confirmation request already exists for this PaymentIntent.");
@@ -114,11 +119,39 @@ public class StripePaymentIntentApplicationService {
                     paymentId,
                     SensitiveValueMasker.maskProviderIdentifier(paymentIntent.latestChargeId())
             );
-            return new StripePaymentConfirmationOutcome(paymentId, false, paymentIntent.id(), paymentIntent.status());
+            return confirmationOutcome(paymentId, false, paymentIntent, orderId);
         } catch (RuntimeException ex) {
             idempotencyApplicationService.release(reservation.idempotencyRecordId());
             throw ex;
         }
+    }
+
+    private StripePaymentConfirmationOutcome confirmationOutcome(
+            UUID paymentId,
+            boolean replayed,
+            StripePaymentIntentResponse paymentIntent,
+            String orderId
+    ) {
+        return new StripePaymentConfirmationOutcome(
+                paymentId,
+                replayed,
+                paymentIntent.id(),
+                paymentIntent.status(),
+                orderId,
+                MoneyDisplayFormatter.formatMinor(paymentIntent.currency(), paymentIntent.amountMinor()),
+                paymentIntent.currency(),
+                paymentIntent.latestChargeId()
+        );
+    }
+
+    private boolean isBrowserConfirmationRequired(String status) {
+        if (status == null) {
+            return false;
+        }
+        return switch (status.toLowerCase()) {
+            case "requires_payment_method", "requires_confirmation", "requires_action" -> true;
+            default -> false;
+        };
     }
 
     private void validate(StripeCreatePaymentIntentCommand command) {

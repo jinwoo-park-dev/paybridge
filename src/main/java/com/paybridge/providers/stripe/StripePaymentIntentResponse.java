@@ -12,7 +12,8 @@ public record StripePaymentIntentResponse(
         long amountMinor,
         String currency,
         String latestChargeId,
-        String orderId
+        String orderId,
+        String description
 ) {
 
     public static StripePaymentIntentResponse from(JsonNode root) {
@@ -26,7 +27,8 @@ public record StripePaymentIntentResponse(
                 requiredLong(root, "amount"),
                 required(root, "currency").toUpperCase(),
                 nullableText(root, "latest_charge"),
-                nullableText(root.path("metadata"), "order_id")
+                nullableText(root.path("metadata"), "order_id"),
+                nullableText(root, "description")
         );
     }
 

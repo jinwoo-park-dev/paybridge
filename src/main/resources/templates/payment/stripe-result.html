@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PayBridge — Stripe Payment Result</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <script defer th:src="@{/js/app.js}"></script>
+</head>
+<body>
+<div class="page-shell page-shell--narrow">
+    <nav class="top-nav top-nav--inner">
+        <a class="top-nav__brand" th:href="@{/}">PayBridge</a>
+        <div class="top-nav__links">
+            <a th:href="@{/checkout}">Checkout</a>
+            <a th:if="${operatorAuthenticated}" th:href="@{/ops/transactions/search}">Transactions</a>
+            <a th:unless="${operatorAuthenticated}" th:href="${operatorLoginUrl}">Operator sign-in</a>
+            <form th:if="${operatorAuthenticated}" class="top-nav__logout-form" th:action="@{/operator/logout}" method="post">
+                <button class="top-nav__logout-button" type="submit">Operator sign-out</button>
+            </form>
+        </div>
+    </nav>
+
+    <header class="section-hero">
+        <a class="back-link" th:href="@{/payments/stripe/checkout}">← Start another Stripe payment</a>
+        <h1 th:text="${result.headline()}">Stripe payment result</h1>
+        <p class="muted" th:text="${result.message()}">Payment status summary.</p>
+    </header>
+
+    <section class="card card--wide" th:classappend="${result.success()} ? 'card--soft' : ''">
+        <div class="alert" th:classappend="${result.success()} ? ' alert--success' : ' alert--error'">
+            <span th:text="${result.success()} ? 'Payment verification completed.' : 'Payment verification did not complete.'">status</span>
+        </div>
+
+        <dl class="definition-list">
+            <div>
+                <dt>Order ID</dt>
+                <dd th:text="${result.orderId()} ?: 'n/a'">order id</dd>
+            </div>
+            <div>
+                <dt>Amount</dt>
+                <dd th:text="${result.amountDisplay()} ?: 'n/a'">amount</dd>
+            </div>
+            <div>
+                <dt>Currency</dt>
+                <dd th:text="${result.currency()} ?: 'n/a'">currency</dd>
+            </div>
+            <div>
+                <dt>Stripe PaymentIntent</dt>
+                <dd class="mono" th:text="${result.paymentIntentId()} ?: 'n/a'">pi_...</dd>
+            </div>
+            <div>
+                <dt>Stripe status</dt>
+                <dd th:text="${result.paymentStatus()} ?: 'n/a'">succeeded</dd>
+            </div>
+            <div th:if="${result.latestChargeId() != null}">
+                <dt>Stripe charge</dt>
+                <dd class="mono" th:text="${result.latestChargeId()}">ch_...</dd>
+            </div>
+            <div th:if="${result.success()}">
+                <dt>PayBridge recording</dt>
+                <dd th:text="${result.replayed()} ? 'Existing transaction reused' : 'New transaction recorded'">recorded</dd>
+            </div>
+            <div th:if="${result.success()}">
+                <dt>Internal transaction reference</dt>
+                <dd class="mono" th:text="${result.paymentId()}">payment id</dd>
+            </div>
+        </dl>
+
+        <div class="alert alert--error" th:if="${!result.success() and result.troubleshootingDetail() != null}">
+            <strong>Details:</strong>
+            <span th:text="${result.troubleshootingDetail()}">troubleshooting detail</span>
+        </div>
+
+        <section class="card card--tight card--soft">
+            <h2>What happens next</h2>
+            <ul class="list">
+                <li>Public users can see this limited result page after a Stripe test payment.</li>
+                <li>Operator sign-in is still required for full transaction detail, audit logs, outbox records, refunds, and exports.</li>
+                <li>Stripe webhooks may later acknowledge the same PaymentIntent; PayBridge reuses the existing payment record instead of creating a duplicate.</li>
+            </ul>
+        </section>
+
+        <div class="actions">
+            <a class="button button--primary" th:href="@{/payments/stripe/checkout}">Start a fresh Stripe demo payment</a>
+            <a class="button button--secondary" th:if="${operatorAuthenticated and result.paymentId() != null}" th:href="@{/payments/{paymentId}(paymentId=${result.paymentId()})}">Open operator detail</a>
+            <a class="button button--secondary" th:unless="${operatorAuthenticated}" th:href="${operatorLoginUrl}">Operator sign-in for details</a>
+        </div>
+    </section>
+</div>
+</body>
+</html>

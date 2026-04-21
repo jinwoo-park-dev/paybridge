@@ -6,6 +6,10 @@ public record StripePaymentConfirmationOutcome(
         UUID paymentId,
         boolean replayed,
         String paymentIntentId,
-        String paymentStatus
+        String paymentStatus,
+        String orderId,
+        String amountDisplay,
+        String currency,
+        String latestChargeId
 ) {
 }

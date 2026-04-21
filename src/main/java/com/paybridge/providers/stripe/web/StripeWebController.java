@@ -3,6 +3,7 @@ package com.paybridge.providers.stripe.web;
 import com.paybridge.providers.stripe.StripeCheckoutPageView;
 import com.paybridge.providers.stripe.StripePaymentConfirmationOutcome;
 import com.paybridge.providers.stripe.StripePaymentIntentApplicationService;
+import com.paybridge.providers.stripe.StripePaymentResultView;
 import com.paybridge.providers.stripe.StripeRefundApplicationService;
 import com.paybridge.providers.stripe.StripeRefundOutcome;
 import com.paybridge.support.config.PayBridgeProperties;
@@ -87,16 +88,27 @@ public class StripeWebController {
     @GetMapping("/return")
     public String handleReturn(
             @RequestParam("payment_intent") String paymentIntentId,
-            RedirectAttributes redirectAttributes
+            Model model
     ) {
-        StripePaymentConfirmationOutcome outcome = stripePaymentIntentApplicationService.confirmAndRecord(paymentIntentId);
-        redirectAttributes.addFlashAttribute(
-                "opsMessage",
-                outcome.replayed()
-                        ? "Stripe PaymentIntent was already recorded. The existing transaction record was reused."
-                        : "Stripe payment was recorded successfully."
-        );
-        return "redirect:/payments/" + outcome.paymentId();
+        return renderPublicResult(paymentIntentId, model);
+    }
+
+    @GetMapping("/result")
+    public String renderResult(
+            @RequestParam("payment_intent") String paymentIntentId,
+            Model model
+    ) {
+        return renderPublicResult(paymentIntentId, model);
+    }
+
+    private String renderPublicResult(String paymentIntentId, Model model) {
+        try {
+            StripePaymentConfirmationOutcome outcome = stripePaymentIntentApplicationService.confirmAndRecord(paymentIntentId);
+            model.addAttribute("result", StripePaymentResultView.success(outcome));
+        } catch (RuntimeException ex) {
+            model.addAttribute("result", StripePaymentResultView.failure(paymentIntentId, ex.getMessage()));
+        }
+        return "payment/stripe-result";
     }
 
     @PostMapping("/{paymentId}/refund")
@@ -141,12 +153,12 @@ public class StripeWebController {
         model.addAttribute("returnUrl", buildReturnUrl(request));
         model.addAttribute("testWarnings", List.of(
                 "The backend creates the PaymentIntent and records the payment; Stripe.js only handles secure in-browser confirmation.",
-                "Local checkout requires PAYBRIDGE_STRIPE_PUBLISHABLE_KEY and PAYBRIDGE_STRIPE_SECRET_KEY.",
+                "Use a fresh demo order ID for each new payment attempt to avoid replaying an already completed PaymentIntent.",
                 "Webhook verification also requires PAYBRIDGE_STRIPE_WEBHOOK_SECRET."
         ));
         model.addAttribute("providerChecklist", List.of(
-                "Use Stripe test mode for local runs.",
-                "Keep the publishable key in the browser and the secret key only in the local environment.",
+                "Use Stripe test mode for local runs and public demos.",
+                "Keep the publishable key in the browser and the secret key only in server-side configuration.",
                 "Return-page verification and webhook processing should converge on the same payment record."
         ));
         if (checkout != null) {

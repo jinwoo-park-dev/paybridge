@@ -13,8 +13,8 @@
         <a class="top-nav__brand" th:href="@{/}">PayBridge</a>
         <div class="top-nav__links">
             <a th:href="@{/checkout}">Checkout</a>
-            <a th:href="@{/ops/transactions/search}">Transactions</a>
-            <a th:href="@{/swagger-ui/index.html}">API Reference</a>
+            <a th:if="${operatorAuthenticated}" th:href="@{/ops/transactions/search}">Transactions</a>
+            <a th:if="${apiReferenceEnabled}" th:href="@{/swagger-ui/index.html}">API Reference</a>
             <form th:if="${operatorAuthenticated}" class="top-nav__logout-form" th:action="@{/operator/logout}" method="post">
                 <button class="top-nav__logout-button" type="submit">Operator sign-out</button>
             </form>
@@ -88,15 +88,21 @@
 
             <div class="actions">
                 <button class="button button--primary" type="submit">Create Stripe PaymentIntent</button>
-                <a class="button button--secondary" th:href="@{/ops/transactions/search}">Open transaction search</a>
+                <a class="button button--secondary" th:if="${operatorAuthenticated}" th:href="@{/ops/transactions/search}">Open transaction search</a>
+                <a class="button button--secondary" th:unless="${operatorAuthenticated}" th:href="${operatorLoginUrl}">Operator sign-in for transaction search</a>
             </div>
         </form>
     </section>
 
     <section class="card card--wide" th:if="${checkout != null}">
         <div class="table-header">
-            <h2>Ready to confirm payment</h2>
+            <h2 th:text="${checkout.confirmationRequired()} ? 'Ready to confirm payment' : 'PaymentIntent is not awaiting browser confirmation'">Ready to confirm payment</h2>
             <span class="muted" th:text="'PaymentIntent: ' + ${checkout.paymentIntentId()}">payment intent id</span>
+        </div>
+
+        <div class="alert alert--info" th:unless="${checkout.confirmationRequired()}">
+            This PaymentIntent is currently <strong th:text="${checkout.paymentIntentStatus()}">status</strong>.
+            If it already succeeded, open the result page to record or reuse the PayBridge payment record instead of confirming it again.
         </div>
 
         <div class="detail-grid">
@@ -107,6 +113,7 @@
                     <dt>Amount</dt><dd th:text="${checkout.amountDisplay()}">USD 19.99</dd>
                     <dt>Currency</dt><dd th:text="${checkout.currency()}">USD</dd>
                     <dt>Description</dt><dd th:text="${checkout.description()}">description</dd>
+                    <dt>PaymentIntent status</dt><dd th:text="${checkout.paymentIntentStatus()}">requires_payment_method</dd>
                 </dl>
             </article>
             <article>
@@ -119,7 +126,7 @@
             </article>
         </div>
 
-        <form id="stripe-payment-form" class="stripe-form" novalidate>
+        <form id="stripe-payment-form" class="stripe-form" th:if="${checkout.confirmationRequired()}" novalidate>
             <div id="payment-element" class="stripe-element-shell"></div>
             <p id="stripe-payment-message" class="stripe-message" aria-live="polite"></p>
             <div class="actions actions--compact">
@@ -127,12 +134,19 @@
             </div>
         </form>
 
+        <div class="actions actions--compact" th:unless="${checkout.confirmationRequired()}">
+            <a class="button button--primary" th:href="@{/payments/stripe/return(payment_intent=${checkout.paymentIntentId()})}">Open payment result</a>
+            <a class="button button--secondary" th:href="@{/payments/stripe/checkout}">Start a new Stripe test</a>
+        </div>
+
         <div id="stripe-config"
+             th:if="${checkout.confirmationRequired()}"
              th:data-publishable-key="${stripePublishableKey}"
              th:data-client-secret="${checkout.clientSecret()}"
+             th:data-payment-status="${checkout.paymentIntentStatus()}"
              th:data-return-url="${returnUrl}"></div>
-        <script src="https://js.stripe.com/v3/"></script>
-        <script defer th:src="@{/js/stripe-checkout.js}"></script>
+        <script th:if="${checkout.confirmationRequired()}" src="https://js.stripe.com/v3/"></script>
+        <script th:if="${checkout.confirmationRequired()}" defer th:src="@{/js/stripe-checkout.js}"></script>
     </section>
 </div>
 </body>
