@@ -34,7 +34,6 @@ public class OperatorLoginController {
         model.addAttribute("projectName", payBridgeProperties.getApp().getDisplayName());
         model.addAttribute("loginError", error != null);
         model.addAttribute("loggedOut", logout != null);
-        model.addAttribute("nicepayOperatorOnly", payBridgeProperties.getFeatures().isNicepayLocalOnly());
         return "operator/login";
     }
 }

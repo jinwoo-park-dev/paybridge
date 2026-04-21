@@ -35,7 +35,6 @@ public class PayBridgeSecurityConfiguration {
 
     @Bean
     SecurityFilterChain payBridgeSecurityFilterChain(HttpSecurity http) throws Exception {
-        boolean nicePayOperatorOnly = payBridgeProperties.getFeatures().isNicepayLocalOnly();
         boolean operatorApiEnabled = payBridgeProperties.getFeatures().isOperatorApiEnabled();
 
         http
@@ -57,13 +56,11 @@ public class PayBridgeSecurityConfiguration {
                         "/actuator/health",
                         "/api/system/info")
                     .permitAll();
-                auth.requestMatchers(HttpMethod.GET, "/payments/stripe/checkout", "/payments/stripe/return").permitAll();
+                auth.requestMatchers(HttpMethod.GET, "/payments/stripe/checkout", "/payments/stripe/return", "/payments/stripe/result").permitAll();
                 auth.requestMatchers(HttpMethod.POST, "/payments/stripe/payment-intent").permitAll();
                 auth.requestMatchers(HttpMethod.POST, "/api/providers/stripe/webhooks").permitAll();
-                if (!nicePayOperatorOnly) {
-                    auth.requestMatchers(HttpMethod.GET, "/payments/nicepay/keyin").permitAll();
-                    auth.requestMatchers(HttpMethod.POST, "/payments/nicepay/keyin/approve").permitAll();
-                }
+                auth.requestMatchers(HttpMethod.GET, "/payments/nicepay/keyin", "/payments/nicepay/result").permitAll();
+                auth.requestMatchers(HttpMethod.POST, "/payments/nicepay/keyin/approve").permitAll();
                 if (operatorApiEnabled) {
                     auth.requestMatchers("/api/ops/**").hasRole("OPERATOR");
                 } else {
@@ -90,7 +87,7 @@ public class PayBridgeSecurityConfiguration {
             .formLogin(form -> form
                 .loginPage("/operator/login")
                 .loginProcessingUrl("/operator/login")
-                .defaultSuccessUrl("/ops/transactions/search", true)
+                .defaultSuccessUrl("/ops/transactions/search", false)
                 .permitAll())
             .logout(logout -> logout
                 .logoutUrl("/operator/logout")
