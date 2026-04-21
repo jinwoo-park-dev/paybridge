@@ -71,7 +71,7 @@ public class PayBridgeProperties {
     public static class FeatureFlags {
         private boolean nicepayEnabled;
         private boolean stripeEnabled;
-        private boolean nicepayLocalOnly = true;
+        private boolean nicepayLocalOnly;
         private boolean unifiedCheckoutEnabled;
         private boolean operatorApiEnabled;
 

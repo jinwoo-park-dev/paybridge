@@ -15,6 +15,6 @@ paybridge:
   features:
     stripe-enabled: ${PAYBRIDGE_STRIPE_ENABLED:false}
     nicepay-enabled: ${PAYBRIDGE_NICEPAY_ENABLED:false}
-    nicepay-local-only: ${PAYBRIDGE_NICEPAY_LOCAL_ONLY:true}
+    nicepay-local-only: ${PAYBRIDGE_NICEPAY_LOCAL_ONLY:false}
     unified-checkout-enabled: true
     operator-api-enabled: true
