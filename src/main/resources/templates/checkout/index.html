@@ -13,8 +13,8 @@
         <a class="top-nav__brand" th:href="@{/}">PayBridge</a>
         <div class="top-nav__links">
             <a th:href="@{/checkout}">Checkout</a>
-            <a th:href="@{/ops/transactions/search}">Transactions</a>
-            <a th:href="@{/swagger-ui/index.html}">API Reference</a>
+            <a th:if="${operatorAuthenticated}" th:href="@{/ops/transactions/search}">Transactions</a>
+            <a th:if="${apiReferenceEnabled}" th:href="@{/swagger-ui/index.html}">API Reference</a>
             <form th:if="${operatorAuthenticated}" class="top-nav__logout-form" th:action="@{/operator/logout}" method="post">
                 <button class="top-nav__logout-button" type="submit">Operator sign-out</button>
             </form>
@@ -27,18 +27,15 @@
         <h1 th:text="${pageTitle}">Choose payment flow</h1>
         <p class="muted">
             Choose a provider-specific payment path from one entry page. Stripe is the primary browser checkout route.
-            NicePay remains available as a local operator flow for merchant-hosted approval and cancellation handling.
+            NicePay can also be exposed for test-mode public demos when feature flags and provider test credentials are enabled.
         </p>
     </header>
 
     <section class="card card--wide card--soft">
         <div class="detail-grid">
             <article>
-                <h2>Order context</h2>
-                <dl class="definition-list definition-list--single">
-                    <dt>Order ID</dt>
-                    <dd class="mono" th:text="${sampleOrderId}">ORD-2026-1001</dd>
-                </dl>
+                <h2>Demo order generation</h2>
+                <p class="muted" th:text="${demoOrderNote}">Each provider link starts a fresh demo order ID.</p>
             </article>
             <article>
                 <h2>How to read this page</h2>

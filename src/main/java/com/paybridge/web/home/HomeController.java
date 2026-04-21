@@ -34,7 +34,6 @@ public class HomeController {
         model.addAttribute("activeProfiles", String.join(", ", environment.getActiveProfiles()));
         model.addAttribute("stripeEnabled", stripeEnabled);
         model.addAttribute("nicepayEnabled", nicepayEnabled);
-        model.addAttribute("nicepayLocalOnly", payBridgeProperties.getFeatures().isNicepayLocalOnly());
         model.addAttribute("unifiedCheckoutEnabled", payBridgeProperties.getFeatures().isUnifiedCheckoutEnabled());
         model.addAttribute("operatorApiEnabled", payBridgeProperties.getFeatures().isOperatorApiEnabled());
         model.addAttribute("productBullets", List.of(
@@ -46,7 +45,7 @@ public class HomeController {
         model.addAttribute("milestones", List.of(
                 "Checkout entry that routes into Stripe or NicePay without flattening provider-specific behavior.",
                 "Stripe browser checkout with return-page verification and webhook follow-up.",
-                "NicePay local operator flow with approval, full cancellation, and partial cancellation.",
+                "NicePay public test key-in flow with operator-only full cancellation and partial cancellation.",
                 "Transaction search, payment detail, and related JSON endpoints for operational inspection."
         ));
         return "home/index";

@@ -13,8 +13,8 @@
         <a class="top-nav__brand" th:href="@{/}">PayBridge</a>
         <div class="top-nav__links">
             <a th:href="@{/checkout}">Checkout</a>
-            <a th:href="@{/ops/transactions/search}">Transactions</a>
-            <a th:href="@{/swagger-ui/index.html}">API Reference</a>
+            <a th:if="${operatorAuthenticated}" th:href="@{/ops/transactions/search}">Transactions</a>
+            <a th:if="${apiReferenceEnabled}" th:href="@{/swagger-ui/index.html}">API Reference</a>
             <form th:if="${operatorAuthenticated}" class="top-nav__logout-form" th:action="@{/operator/logout}" method="post">
                 <button class="top-nav__logout-button" type="submit">Operator sign-out</button>
             </form>
@@ -75,10 +75,9 @@
                 </article>
                 <article class="provider-card">
                     <h3>NicePay key-in</h3>
-                    <p>Authenticated local operator flow for merchant-hosted approval and cancellation behavior.</p>
+                    <p>Public test route for merchant-hosted approval plus operator-only cancellation behavior.</p>
                     <span class="status" th:classappend="${nicepayEnabled} ? ' status--enabled' : ' status--inactive'"
                           th:text="${nicepayEnabled} ? 'Enabled' : 'Requires local configuration'">Requires local configuration</span>
-                    <small class="muted" th:if="${nicepayLocalOnly}">Restricted to authenticated local use.</small>
                 </article>
             </div>
         </section>
@@ -86,8 +85,8 @@
         <section class="card card--wide">
             <div class="actions">
                 <a class="button button--primary" th:href="@{/checkout}">Open checkout</a>
-                <a class="button button--secondary" th:href="@{/ops/transactions/search}">Open transaction search</a>
-                <a class="button button--secondary" th:href="@{/swagger-ui/index.html}">Open API reference</a>
+                <a class="button button--secondary" th:if="${operatorAuthenticated}" th:href="@{/ops/transactions/search}">Open transaction search</a>
+                <a class="button button--secondary" th:if="${apiReferenceEnabled}" th:href="@{/swagger-ui/index.html}">Open API reference</a>
                 <form th:if="${operatorAuthenticated}" class="actions__inline-form" th:action="@{/operator/logout}" method="post">
                     <button class="button button--secondary" type="submit">Operator sign-out</button>
                 </form>

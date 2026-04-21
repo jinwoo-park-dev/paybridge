@@ -1,5 +1,7 @@
 package com.paybridge.web.checkout;
 
+import com.paybridge.providers.nicepay.web.NicePayKeyInForm;
+import com.paybridge.providers.stripe.web.StripeCheckoutForm;
 import com.paybridge.support.config.PayBridgeProperties;
 import io.swagger.v3.oas.annotations.Hidden;
 import java.util.List;
@@ -22,12 +24,12 @@ public class CheckoutController {
     public String checkout(Model model) {
         model.addAttribute("projectName", payBridgeProperties.getApp().getDisplayName());
         model.addAttribute("pageTitle", "Choose payment flow");
-        model.addAttribute("sampleOrderId", "ORD-2026-1001");
         model.addAttribute("operatorLoginUrl", "/operator/login");
+        model.addAttribute("demoOrderNote", "Each provider link starts a fresh demo order ID so repeated test payments do not reuse the same PaymentIntent or provider transaction.");
         model.addAttribute("selectionNotes", List.of(
                 "Start here to choose the provider-specific execution path.",
                 "Stripe is the primary browser checkout route and records a server-created PaymentIntent into the shared payment model.",
-                "NicePay remains available as an authenticated local operator path for merchant-hosted approval and cancellation handling."
+                "NicePay key-in is available as a public test route when feature flags and provider test credentials are enabled."
         ));
         model.addAttribute("checkoutOptions", List.of(
                 stripeOption(),
@@ -41,7 +43,7 @@ public class CheckoutController {
                 && payBridgeProperties.getProviders().getStripe().isEnabled();
 
         String actionUrl = UriComponentsBuilder.fromPath("/payments/stripe/checkout")
-                .queryParam("orderId", "ORD-STR-2026-1001")
+                .queryParam("orderId", StripeCheckoutForm.newDemoOrderId())
                 .queryParam("amountMinor", 1999)
                 .queryParam("currency", "USD")
                 .queryParam("description", "Monthly plan renewal")
@@ -70,7 +72,7 @@ public class CheckoutController {
                 && payBridgeProperties.getProviders().getNicepay().isEnabled();
 
         String actionUrl = UriComponentsBuilder.fromPath("/payments/nicepay/keyin")
-                .queryParam("orderId", "ORD-NP-2026-1001")
+                .queryParam("orderId", NicePayKeyInForm.newDefaultOrderId())
                 .queryParam("amountMinor", 10000)
                 .queryParam("goodsName", "Monthly plan renewal")
                 .queryParam("buyerName", "Alex Kim")
@@ -82,15 +84,15 @@ public class CheckoutController {
         return new CheckoutOptionView(
                 "nicepay",
                 "NicePay key-in",
-                payBridgeProperties.getFeatures().isNicepayLocalOnly() ? "Local operator flow" : "Provider-specific flow",
+                "Public test flow",
                 "Merchant-hosted key-in flow retained for provider-specific approval and cancellation handling.",
                 actionUrl,
                 enabled,
-                payBridgeProperties.getFeatures().isNicepayLocalOnly(),
+                false,
                 List.of(
                         "Approval, full cancellation, and partial cancellation stay on the provider path",
                         "Provider-specific identifiers are stored on the shared payment record",
-                        "Merchant-hosted card entry remains authenticated and local-only when configured"
+                        "Merchant-hosted card entry should use only provider test credentials and test card data"
                 )
         );
     }

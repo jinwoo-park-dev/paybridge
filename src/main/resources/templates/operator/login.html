@@ -13,7 +13,7 @@
         <a class="top-nav__brand" th:href="@{/}">PayBridge</a>
         <div class="top-nav__links">
             <a th:href="@{/checkout}">Checkout</a>
-            <a th:href="@{/swagger-ui/index.html}">API Reference</a>
+            <a th:if="${apiReferenceEnabled}" th:href="@{/swagger-ui/index.html}">API Reference</a>
         </div>
     </nav>
 
@@ -54,7 +54,6 @@
                 <li>Transaction search and payment detail pages</li>
                 <li>Refund and cancellation actions from the payment detail page</li>
                 <li>Read-only JSON endpoints for transaction lookup, audit logs, outbox events, and Stripe webhook inspection</li>
-                <li th:if="${nicepayOperatorOnly}">NicePay key-in page when local-only mode is enabled</li>
             </ul>
         </section>
     </section>
