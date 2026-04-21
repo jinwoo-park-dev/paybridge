@@ -3,14 +3,22 @@ package com.paybridge.providers.nicepay.web;
 import com.paybridge.providers.nicepay.NicePayKeyInApprovalCommand;
 import com.paybridge.providers.nicepay.NicePayKeyInCardDetails;
 import com.paybridge.support.validation.EucKrByteLength;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import java.security.SecureRandom;
+import java.time.Clock;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 public class NicePayKeyInForm {
+
+    private static final SecureRandom RANDOM = new SecureRandom();
+    private static final DateTimeFormatter ORDER_ID_TIMESTAMP = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
 
     @NotBlank(message = "Order ID is required.")
     @Size(max = 64, message = "Order ID must be 64 characters or fewer.")
@@ -55,9 +63,12 @@ public class NicePayKeyInForm {
     @Pattern(regexp = "\\d{2}", message = "Installment months must be two digits.")
     private String cardQuota = "00";
 
+    @AssertTrue(message = "Confirm that you are using provider test credentials and test card data only.")
+    private boolean testDataAcknowledged;
+
     public static NicePayKeyInForm defaultForm() {
         return seeded(
-                "ORD-NP-2026-1001",
+                newDefaultOrderId(),
                 10_000L,
                 "Monthly plan renewal",
                 "Alex Kim",
@@ -75,7 +86,7 @@ public class NicePayKeyInForm {
             String buyerTel
     ) {
         NicePayKeyInForm form = new NicePayKeyInForm();
-        form.setOrderId(blankToDefault(orderId, "ORD-NP-2026-1001"));
+        form.setOrderId(blankToDefault(orderId, newDefaultOrderId()));
         form.setAmountMinor(amountMinor == null || amountMinor <= 0 ? 10_000L : amountMinor);
         form.setGoodsName(blankToDefault(goodsName, "Monthly plan renewal"));
         form.setBuyerName(blankToDefault(buyerName, "Alex Kim"));
@@ -83,7 +94,21 @@ public class NicePayKeyInForm {
         form.setBuyerTel(blankToDefault(buyerTel, "01012345678"));
         form.setCardInterest("0");
         form.setCardQuota("00");
+        form.setTestDataAcknowledged(false);
         return form;
+    }
+
+    public static String newDefaultOrderId() {
+        return newDefaultOrderId(Clock.systemUTC());
+    }
+
+    static String newDefaultOrderId(Clock clock) {
+        String timestamp = LocalDateTime.now(clock).format(ORDER_ID_TIMESTAMP);
+        return "ORD-NP-" + timestamp + "-" + randomSuffix();
+    }
+
+    private static String randomSuffix() {
+        return "%04X".formatted(RANDOM.nextInt(0x10000));
     }
 
     public NicePayKeyInApprovalCommand toCommand() {
@@ -139,4 +164,6 @@ public class NicePayKeyInForm {
     public void setCardInterest(String cardInterest) { this.cardInterest = cardInterest; }
     public String getCardQuota() { return cardQuota; }
     public void setCardQuota(String cardQuota) { this.cardQuota = cardQuota; }
+    public boolean isTestDataAcknowledged() { return testDataAcknowledged; }
+    public void setTestDataAcknowledged(boolean testDataAcknowledged) { this.testDataAcknowledged = testDataAcknowledged; }
 }

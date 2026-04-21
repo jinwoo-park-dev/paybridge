@@ -13,8 +13,8 @@
         <a class="top-nav__brand" th:href="@{/}">PayBridge</a>
         <div class="top-nav__links">
             <a th:href="@{/checkout}">Checkout</a>
-            <a th:href="@{/ops/transactions/search}">Transactions</a>
-            <a th:href="@{/swagger-ui/index.html}">API Reference</a>
+            <a th:if="${operatorAuthenticated}" th:href="@{/ops/transactions/search}">Transactions</a>
+            <a th:if="${apiReferenceEnabled}" th:href="@{/swagger-ui/index.html}">API Reference</a>
             <form th:if="${operatorAuthenticated}" class="top-nav__logout-form" th:action="@{/operator/logout}" method="post">
                 <button class="top-nav__logout-button" type="submit">Operator sign-out</button>
             </form>
@@ -25,15 +25,15 @@
     <header class="section-hero">
         <a class="back-link" th:href="@{/checkout}">← Back to checkout</a>
         <h1>NicePay key-in</h1>
-        <p class="muted">Local operator flow for merchant-hosted approval and cancellation handling.</p>
+        <p class="muted">Merchant-hosted key-in test flow for provider-specific approval and cancellation handling.</p>
     </header>
 
     <div th:if="${submitError}" class="alert alert--error alert--dismissible" th:text="${submitError}">Provider error.</div>
-    <div class="alert alert--info" th:if="${nicePayLocalOnly}">
-        This route is intended for authenticated local use and provider verification, not public internet card capture.
+    <div class="alert alert--info">
+        Public NicePay test mode is available without operator sign-in. Use only provider test credentials and approved test card data.
     </div>
     <div class="alert alert--info" th:if="${!nicePayEnabled}">
-        NicePay key-in is unavailable until local feature flags and provider credentials are configured.
+        NicePay key-in is unavailable until feature flags, MID, merchant key, and provider test credentials are configured.
     </div>
 
     <section class="card card--wide card--soft">
@@ -116,6 +116,11 @@
                         <option value="06">06 - 6 months</option>
                     </select>
                 </label>
+
+                <label class="form-check form-check--wide">
+                    <input type="checkbox" th:field="*{testDataAcknowledged}">
+                    <span>I confirm this demo uses provider test credentials and approved test card data only.</span>
+                </label>
             </div>
 
             <div class="validation-summary" th:if="${#fields.hasAnyErrors()}">
@@ -126,8 +131,9 @@
             </div>
 
             <div class="actions">
-                <button class="button button--primary" type="submit">Submit approval</button>
-                <a class="button button--secondary" th:href="@{/ops/transactions/search}">Open transaction search</a>
+                <button class="button button--primary" type="submit" th:disabled="${!nicePayEnabled}">Submit test approval</button>
+                <a class="button button--secondary" th:if="${operatorAuthenticated}" th:href="@{/ops/transactions/search}">Open transaction search</a>
+                <a class="button button--secondary" th:unless="${operatorAuthenticated}" th:href="${operatorLoginUrl}">Operator sign-in for transaction search</a>
             </div>
         </form>
     </section>
