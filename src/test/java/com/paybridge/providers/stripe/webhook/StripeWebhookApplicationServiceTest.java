@@ -50,7 +50,7 @@ class StripeWebhookApplicationServiceTest {
         String signature = validSignature(payload, properties.getProviders().getStripe().getWebhookSigningSecret());
         given(webhookEventRepository.saveAndFlush(any(StripeWebhookEventJpaEntity.class))).willAnswer(invocation -> invocation.getArgument(0));
         given(confirmationService.confirmAndRecord("pi_123"))
-                .willReturn(new StripePaymentConfirmationOutcome(UUID.fromString("11111111-1111-1111-1111-111111111111"), false, "pi_123", "succeeded"));
+                .willReturn(new StripePaymentConfirmationOutcome(UUID.fromString("11111111-1111-1111-1111-111111111111"), false, "pi_123", "succeeded", "ORD-STR-2026-1001", "USD 19.99", "USD", "ch_test_123"));
 
         StripeWebhookOutcome outcome = service.handle(payload, signature);
 

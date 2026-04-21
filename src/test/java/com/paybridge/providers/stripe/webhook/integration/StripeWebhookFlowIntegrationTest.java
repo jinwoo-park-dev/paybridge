@@ -80,7 +80,11 @@ class StripeWebhookFlowIntegrationTest extends AbstractPostgresIntegrationTest {
                         UUID.fromString("11111111-1111-1111-1111-111111111111"),
                         false,
                         "pi_checkout_123",
-                        "succeeded"
+                        "succeeded",
+                        "ORD-STR-2026-1001",
+                        "USD 19.99",
+                        "USD",
+                        "ch_test_123"
                 ));
 
         mockMvc.perform(post("/api/providers/stripe/webhooks")
@@ -115,7 +119,11 @@ class StripeWebhookFlowIntegrationTest extends AbstractPostgresIntegrationTest {
                         UUID.fromString("22222222-2222-2222-2222-222222222222"),
                         false,
                         "pi_duplicate_123",
-                        "succeeded"
+                        "succeeded",
+                        "ORD-STR-2026-1002",
+                        "USD 19.99",
+                        "USD",
+                        "ch_test_123"
                 ));
 
         mockMvc.perform(post("/api/providers/stripe/webhooks")
