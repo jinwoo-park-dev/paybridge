@@ -33,7 +33,6 @@ class CheckoutControllerTest {
         PayBridgeProperties.FeatureFlags flags = new PayBridgeProperties.FeatureFlags();
         flags.setStripeEnabled(true);
         flags.setNicepayEnabled(true);
-        flags.setNicepayLocalOnly(true);
         PayBridgeProperties.ProviderProperties providers = new PayBridgeProperties.ProviderProperties();
         providers.getStripe().setEnabled(true);
         providers.getNicepay().setEnabled(true);
@@ -47,6 +46,6 @@ class CheckoutControllerTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Stripe Payment Element")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("NicePay key-in")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Primary browser checkout")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Local operator flow")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Public test flow")));
     }
 }

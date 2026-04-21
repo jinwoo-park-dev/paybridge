@@ -44,6 +44,31 @@ class OperatorSecurityIntegrationTest extends AbstractPostgresIntegrationTest {
             .andExpect(status().isOk());
     }
 
+
+    @Test
+    void nicePayKeyInRemainsPublicForAnonymousDemoUsers() throws Exception {
+        mockMvc.perform(get("/payments/nicepay/keyin"))
+            .andExpect(status().isOk());
+    }
+
+    @Test
+    void nicePayResultRemainsPublicForAnonymousDemoUsers() throws Exception {
+        mockMvc.perform(get("/payments/nicepay/result").param("paymentId", "11111111-1111-1111-1111-111111111111"))
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void operatorApiRejectsAnonymousUsersWhenEnabled() throws Exception {
+        mockMvc.perform(get("/api/ops/transactions"))
+            .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void operatorApiAllowsAuthenticatedOperatorsWhenEnabled() throws Exception {
+        mockMvc.perform(get("/api/ops/transactions").with(user("operator").roles("OPERATOR")))
+            .andExpect(status().isOk());
+    }
+
     @Test
     void authenticatedOperatorCanLogoutFromUiFlow() throws Exception {
         mockMvc.perform(post("/operator/logout")
