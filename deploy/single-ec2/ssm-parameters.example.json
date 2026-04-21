@@ -1,22 +1,102 @@
 [
-  {"Name":"/paybridge/prod/app/domain","Type":"String","Value":"paybridge-us.com"},
-  {"Name":"/paybridge/prod/db/name","Type":"String","Value":"paybridge"},
-  {"Name":"/paybridge/prod/db/username","Type":"SecureString","Value":"paybridge_app"},
-  {"Name":"/paybridge/prod/db/password","Type":"SecureString","Value":"replace-with-strong-password"},
-  {"Name":"/paybridge/prod/operator/username","Type":"SecureString","Value":"operator"},
-  {"Name":"/paybridge/prod/operator/password","Type":"SecureString","Value":"replace-with-strong-password"},
-  {"Name":"/paybridge/prod/operator/api-enabled","Type":"String","Value":"false"},
-  {"Name":"/paybridge/prod/console/allowed-origins","Type":"String","Value":"https://paybridge-us.com"},
-  {"Name":"/paybridge/prod/stripe/enabled","Type":"String","Value":"true"},
-  {"Name":"/paybridge/prod/stripe/provider-enabled","Type":"String","Value":"true"},
-  {"Name":"/paybridge/prod/stripe/publishable-key","Type":"SecureString","Value":"pk_test_replace"},
-  {"Name":"/paybridge/prod/stripe/secret-key","Type":"SecureString","Value":"sk_test_replace"},
-  {"Name":"/paybridge/prod/stripe/webhook-secret","Type":"SecureString","Value":"whsec_replace"},
-  {"Name":"/paybridge/prod/stripe/default-currency","Type":"String","Value":"USD"},
-  {"Name":"/paybridge/prod/nicepay/enabled","Type":"String","Value":"false"},
-  {"Name":"/paybridge/prod/nicepay/provider-enabled","Type":"String","Value":"false"},
-  {"Name":"/paybridge/prod/nicepay/local-only","Type":"String","Value":"true"},
-  {"Name":"/paybridge/prod/nicepay/mid","Type":"SecureString","Value":""},
-  {"Name":"/paybridge/prod/nicepay/merchant-key","Type":"SecureString","Value":""},
-  {"Name":"/paybridge/prod/java/tool-options","Type":"String","Value":"-XX:MaxRAMPercentage=65 -XX:InitialRAMPercentage=25 -XX:+UseContainerSupport"}
+  {
+    "Name": "/paybridge/prod/app/domain",
+    "Type": "String",
+    "Value": "paybridge-us.com"
+  },
+  {
+    "Name": "/paybridge/prod/db/name",
+    "Type": "String",
+    "Value": "paybridge"
+  },
+  {
+    "Name": "/paybridge/prod/db/username",
+    "Type": "SecureString",
+    "Value": "paybridge_app"
+  },
+  {
+    "Name": "/paybridge/prod/db/password",
+    "Type": "SecureString",
+    "Value": "replace-with-strong-password"
+  },
+  {
+    "Name": "/paybridge/prod/operator/username",
+    "Type": "SecureString",
+    "Value": "operator"
+  },
+  {
+    "Name": "/paybridge/prod/operator/password",
+    "Type": "SecureString",
+    "Value": "replace-with-strong-password"
+  },
+  {
+    "Name": "/paybridge/prod/operator/api-enabled",
+    "Type": "String",
+    "Value": "true"
+  },
+  {
+    "Name": "/paybridge/prod/console/allowed-origins",
+    "Type": "String",
+    "Value": "https://paybridge-us.com"
+  },
+  {
+    "Name": "/paybridge/prod/stripe/enabled",
+    "Type": "String",
+    "Value": "true"
+  },
+  {
+    "Name": "/paybridge/prod/stripe/provider-enabled",
+    "Type": "String",
+    "Value": "true"
+  },
+  {
+    "Name": "/paybridge/prod/stripe/publishable-key",
+    "Type": "SecureString",
+    "Value": "pk_test_replace"
+  },
+  {
+    "Name": "/paybridge/prod/stripe/secret-key",
+    "Type": "SecureString",
+    "Value": "sk_test_replace"
+  },
+  {
+    "Name": "/paybridge/prod/stripe/webhook-secret",
+    "Type": "SecureString",
+    "Value": "whsec_replace"
+  },
+  {
+    "Name": "/paybridge/prod/stripe/default-currency",
+    "Type": "String",
+    "Value": "USD"
+  },
+  {
+    "Name": "/paybridge/prod/nicepay/enabled",
+    "Type": "String",
+    "Value": "true"
+  },
+  {
+    "Name": "/paybridge/prod/nicepay/provider-enabled",
+    "Type": "String",
+    "Value": "true"
+  },
+  {
+    "Name": "/paybridge/prod/nicepay/local-only",
+    "Type": "String",
+    "Value": "false"
+  },
+  {
+    "Name": "/paybridge/prod/nicepay/mid",
+    "Type": "SecureString",
+    "Value": "replace-with-test-mid"
+  },
+  {
+    "Name": "/paybridge/prod/nicepay/merchant-key",
+    "Type": "SecureString",
+    "Value": "replace-with-test-merchant-key"
+  },
+  {
+    "Name": "/paybridge/prod/java/tool-options",
+    "Type": "String",
+    "Value": "-XX:MaxRAMPercentage=65 -XX:InitialRAMPercentage=25 -XX:+UseContainerSupport"
+  }
 ]
