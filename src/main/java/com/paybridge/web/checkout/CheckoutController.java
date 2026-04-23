@@ -25,11 +25,11 @@ public class CheckoutController {
         model.addAttribute("projectName", payBridgeProperties.getApp().getDisplayName());
         model.addAttribute("pageTitle", "Choose a test payment path");
         model.addAttribute("operatorLoginUrl", "/operator/login");
-        model.addAttribute("demoOrderNote", "Stripe creates a fresh demo order ID for each browser checkout attempt. NicePay also starts from a generated test order ID.");
+        model.addAttribute("demoOrderNote", "Each provider link starts with a fresh demo order ID so repeated tests do not reuse the same recorded payment flow.");
         model.addAttribute("selectionNotes", List.of(
-            "Start a public test payment from one page while each provider keeps its own execution path.",
+            "Choose the provider path from one entry page while PayBridge records the result in one shared payment lifecycle.",
             "Stripe uses a browser checkout backed by a server created PaymentIntent.",
-            "NicePay uses a public keyed entry test form when provider test credentials are configured.",
+            "NicePay uses test merchant credentials, but it can still create a real temporary card charge that is automatically canceled before midnight on the same day.",
             "Operator login is still required for transaction detail, refunds, cancellations, audit records, and exports."
         ));
         model.addAttribute("checkoutOptions", List.of(
@@ -43,9 +43,10 @@ public class CheckoutController {
         PayBridgeProperties.FeatureFlags features = payBridgeProperties.getFeatures();
         PayBridgeProperties.Stripe stripe = payBridgeProperties.getProviders().getStripe();
         boolean featureEnabled = features.isStripeEnabled() && stripe.isEnabled();
+        boolean credentialsConfigured = hasText(stripe.getPublishableKey()) && hasText(stripe.getSecretKey());
         Availability availability = availability(
             featureEnabled,
-            hasText(stripe.getPublishableKey()) && hasText(stripe.getSecretKey()),
+            credentialsConfigured,
             "Stripe test keys are not configured in this environment."
         );
 
@@ -71,7 +72,7 @@ public class CheckoutController {
             List.of(
                 "Server creates the PaymentIntent before browser confirmation",
                 "Stripe fields collect card details without exposing them to PayBridge",
-                "Return page and webhook handling reuse the same recorded payment"
+                "The return page and webhook path converge on the same recorded payment"
             )
         );
     }
@@ -80,9 +81,10 @@ public class CheckoutController {
         PayBridgeProperties.FeatureFlags features = payBridgeProperties.getFeatures();
         PayBridgeProperties.NicePay nicePay = payBridgeProperties.getProviders().getNicepay();
         boolean featureEnabled = features.isNicepayEnabled() && nicePay.isEnabled();
+        boolean credentialsConfigured = hasText(nicePay.getMerchantId()) && hasText(nicePay.getMerchantKey());
         Availability availability = availability(
             featureEnabled,
-            hasText(nicePay.getMerchantId()) && hasText(nicePay.getMerchantKey()),
+            credentialsConfigured,
             "NicePay test MID and merchant key are not configured in this environment."
         );
 
@@ -98,18 +100,18 @@ public class CheckoutController {
 
         return new CheckoutOptionView(
             "nicepay",
-            "NicePay keyed entry",
-            "Public test form",
-            "PayBridge submits a provider test approval and records the result in the shared payment lifecycle.",
+            "NicePay payment test",
+            "Public real card test",
+            "This route uses NicePay test merchant credentials, but the submitted card can still receive a real temporary charge before the provider cancels it later the same day.",
             actionUrl,
-            "Open NicePay test form",
+            "Open NicePay payment test",
             availability.enabled(),
             false,
             availability.unavailableMessage(),
             List.of(
-                "Use provider test credentials and approved test card data only",
-                "Provider IDs are stored on the shared payment record",
-                "Refund and cancellation actions stay behind operator access"
+                "The tester enters a real card and personal information they are authorized to use",
+                "NicePay automatically cancels the temporary test charge before midnight on the same day",
+                "PayBridge records the approval result while internal detail, refund, and cancellation actions stay behind operator access"
             )
         );
     }

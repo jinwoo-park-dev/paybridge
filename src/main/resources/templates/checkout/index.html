@@ -24,9 +24,9 @@
 
     <header class="section-hero">
         <a class="back-link" th:href="@{/}">← Back to home</a>
-        <h1 th:text="${pageTitle}">Choose payment flow</h1>
+        <h1 th:text="${pageTitle}">Choose a test payment path</h1>
         <p class="muted">
-            Start a test payment from one entry page. Stripe uses a browser checkout. NicePay uses a keyed entry test form when provider test credentials are configured.
+            Start a test payment from one entry page. Stripe uses a browser checkout. NicePay uses test merchant credentials, but it can still create a real temporary charge on the submitted card.
         </p>
     </header>
 
