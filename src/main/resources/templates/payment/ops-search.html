@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PayBridge — Transaction Search</title>
+    <title>PayBridge</title>
     <link rel="stylesheet" th:href="@{/css/app.css}">
     <script defer th:src="@{/js/app.js}"></script>
 </head>
@@ -16,20 +16,20 @@
             <a th:if="${operatorAuthenticated}" th:href="@{/ops/transactions/search}">Transactions</a>
             <a th:if="${apiReferenceEnabled}" th:href="@{/swagger-ui/index.html}">API Reference</a>
             <form class="top-nav__logout-form" th:action="@{/operator/logout}" method="post">
-                <button class="top-nav__logout-button" type="submit">Operator sign-out</button>
+                <button class="top-nav__logout-button" type="submit">Operator logout</button>
             </form>
         </div>
     </nav>
 
     <header class="section-hero">
         <a class="back-link" th:href="@{/}">← Back to home</a>
-        <h1>Transaction Search</h1>
-        <p class="muted">Search the shared payment record by internal order ID or provider identifiers.</p>
+        <h1>Transaction search</h1>
+        <p class="muted">Search recorded payments by order ID, provider IDs, status, or provider. Public checkout results show a summary; this page shows the operator view.</p>
     </header>
 
     <section class="card card--wide card--soft">
         <div class="table-header">
-            <h2>Operational view</h2>
+            <h2>Operator view</h2>
             <span class="muted" th:text="'Current rows: ' + ${resultCount}">Current rows: 0</span>
         </div>
         <p class="muted">Stripe and NicePay approvals appear in one searchable record so operators can compare status, provider IDs, and remaining reversible amount.</p>
@@ -47,7 +47,7 @@
                     <input type="text" name="providerPaymentId" th:value="${criteria.providerPaymentId()} ?: ''" placeholder="pi_... or provider payment id">
                 </label>
                 <label>
-                    <span>Provider transaction / approval ID</span>
+                    <span>Provider transaction or approval ID</span>
                     <input type="text" name="providerTransactionId" th:value="${criteria.providerTransactionId()} ?: ''" placeholder="charge id, approval code, or TID">
                 </label>
                 <label>
@@ -80,7 +80,7 @@
 
     <section class="card card--wide">
         <div class="table-header">
-            <h2>Search Results</h2>
+            <h2>Search results</h2>
             <span class="muted" th:text="'Rows: ' + ${resultCount}">Rows: 0</span>
         </div>
 
@@ -100,7 +100,7 @@
                     <th>Amount</th>
                     <th>Remaining reversible amount</th>
                     <th>Provider payment ID</th>
-                    <th>Provider transaction / approval ID</th>
+                    <th>Provider transaction or approval ID</th>
                     <th>Approved At</th>
                 </tr>
                 </thead>
