@@ -39,8 +39,8 @@ class CheckoutControllerTest {
         providers.getStripe().setPublishableKey("pk_test_123");
         providers.getStripe().setSecretKey("sk_test_123");
         providers.getNicepay().setEnabled(true);
-        providers.getNicepay().setMerchantId("nictest04m");
-        providers.getNicepay().setMerchantKey("test-merchant-key");
+        providers.getNicepay().setMerchantId("test-mid-configured");
+        providers.getNicepay().setMerchantKey("test-merchant-key-configured");
         given(payBridgeProperties.getApp()).willReturn(app);
         given(payBridgeProperties.getFeatures()).willReturn(flags);
         given(payBridgeProperties.getProviders()).willReturn(providers);
@@ -48,14 +48,14 @@ class CheckoutControllerTest {
         mockMvc.perform(get("/checkout"))
             .andExpect(status().isOk())
             .andExpect(content().string(Matchers.containsString("Choose a test payment path")))
-            .andExpect(content().string(Matchers.containsString("Stripe browser checkout")))
-            .andExpect(content().string(Matchers.containsString("NicePay keyed entry")))
-            .andExpect(content().string(Matchers.containsString("Primary test card flow")))
-            .andExpect(content().string(Matchers.containsString("Public test form")));
+            .andExpect(content().string(Matchers.containsString("NicePay payment test")))
+            .andExpect(content().string(Matchers.containsString("Public real card test")))
+            .andExpect(content().string(Matchers.containsString("real temporary charge")))
+            .andExpect(content().string(Matchers.containsString("Open NicePay payment test")));
     }
 
     @Test
-    void rendersEnvironmentSpecificUnavailableMessages() throws Exception {
+    void rendersProviderSpecificUnavailableMessages() throws Exception {
         PayBridgeProperties.App app = new PayBridgeProperties.App();
         PayBridgeProperties.FeatureFlags flags = new PayBridgeProperties.FeatureFlags();
         flags.setStripeEnabled(true);
