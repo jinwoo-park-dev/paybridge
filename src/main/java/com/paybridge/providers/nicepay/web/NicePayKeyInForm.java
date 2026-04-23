@@ -10,15 +10,16 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
-import java.security.SecureRandom;
-import java.time.Clock;
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.Locale;
+import java.util.UUID;
 
 public class NicePayKeyInForm {
 
-    private static final SecureRandom RANDOM = new SecureRandom();
-    private static final DateTimeFormatter ORDER_ID_TIMESTAMP = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+    private static final DateTimeFormatter DEMO_ORDER_TIMESTAMP = DateTimeFormatter.ofPattern("yyyyMMddHHmmss")
+        .withZone(ZoneOffset.UTC);
 
     @NotBlank(message = "Order ID is required.")
     @Size(max = 64, message = "Order ID must be 64 characters or fewer.")
@@ -63,27 +64,27 @@ public class NicePayKeyInForm {
     @Pattern(regexp = "\\d{2}", message = "Installment months must be two digits.")
     private String cardQuota = "00";
 
-    @AssertTrue(message = "Confirm that you are using provider test credentials and test card data only.")
+    @AssertTrue(message = "You must confirm that you are authorized to use the submitted card and personal information and that you accept responsibility for this NicePay payment test.")
     private boolean testDataAcknowledged;
 
     public static NicePayKeyInForm defaultForm() {
         return seeded(
-                newDefaultOrderId(),
-                10_000L,
-                "Monthly plan renewal",
-                "Alex Kim",
-                "buyer@example.com",
-                "01012345678"
+            null,
+            10_000L,
+            "Monthly plan renewal",
+            "Alex Kim",
+            "buyer@example.com",
+            "01012345678"
         );
     }
 
     public static NicePayKeyInForm seeded(
-            String orderId,
-            Long amountMinor,
-            String goodsName,
-            String buyerName,
-            String buyerEmail,
-            String buyerTel
+        String orderId,
+        Long amountMinor,
+        String goodsName,
+        String buyerName,
+        String buyerEmail,
+        String buyerTel
     ) {
         NicePayKeyInForm form = new NicePayKeyInForm();
         form.setOrderId(blankToDefault(orderId, newDefaultOrderId()));
@@ -99,29 +100,22 @@ public class NicePayKeyInForm {
     }
 
     public static String newDefaultOrderId() {
-        return newDefaultOrderId(Clock.systemUTC());
-    }
-
-    static String newDefaultOrderId(Clock clock) {
-        String timestamp = LocalDateTime.now(clock).format(ORDER_ID_TIMESTAMP);
-        return "ORD-NP-" + timestamp + "-" + randomSuffix();
-    }
-
-    private static String randomSuffix() {
-        return "%04X".formatted(RANDOM.nextInt(0x10000));
+        String timestamp = DEMO_ORDER_TIMESTAMP.format(Instant.now());
+        String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 4).toUpperCase(Locale.ROOT);
+        return "ORD-NP-" + timestamp + "-" + suffix;
     }
 
     public NicePayKeyInApprovalCommand toCommand() {
         return new NicePayKeyInApprovalCommand(
-                orderId,
-                amountMinor,
-                goodsName,
-                buyerName,
-                blankToNull(buyerEmail),
-                blankToNull(buyerTel),
-                new NicePayKeyInCardDetails(cardNumber, cardExpireYyMm, blankToNull(buyerAuthNumber), blankToNull(cardPasswordTwoDigits)),
-                cardInterest,
-                cardQuota
+            orderId,
+            amountMinor,
+            goodsName,
+            buyerName,
+            blankToNull(buyerEmail),
+            blankToNull(buyerTel),
+            new NicePayKeyInCardDetails(cardNumber, cardExpireYyMm, blankToNull(buyerAuthNumber), blankToNull(cardPasswordTwoDigits)),
+            cardInterest,
+            cardQuota
         );
     }
 

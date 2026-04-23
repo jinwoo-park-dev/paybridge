@@ -37,10 +37,10 @@ public class NicePayWebController {
     private final PayBridgeProperties payBridgeProperties;
 
     public NicePayWebController(
-            NicePayApprovalApplicationService nicePayApprovalApplicationService,
-            NicePayCancellationApplicationService nicePayCancellationApplicationService,
-            PaymentQueryApplicationService paymentQueryApplicationService,
-            PayBridgeProperties payBridgeProperties
+        NicePayApprovalApplicationService nicePayApprovalApplicationService,
+        NicePayCancellationApplicationService nicePayCancellationApplicationService,
+        PaymentQueryApplicationService paymentQueryApplicationService,
+        PayBridgeProperties payBridgeProperties
     ) {
         this.nicePayApprovalApplicationService = nicePayApprovalApplicationService;
         this.nicePayCancellationApplicationService = nicePayCancellationApplicationService;
@@ -50,13 +50,13 @@ public class NicePayWebController {
 
     @GetMapping("/keyin")
     public String renderKeyInPage(
-            @RequestParam(required = false) String orderId,
-            @RequestParam(required = false) Long amountMinor,
-            @RequestParam(required = false) String goodsName,
-            @RequestParam(required = false) String buyerName,
-            @RequestParam(required = false) String buyerEmail,
-            @RequestParam(required = false) String buyerTel,
-            Model model
+        @RequestParam(required = false) String orderId,
+        @RequestParam(required = false) Long amountMinor,
+        @RequestParam(required = false) String goodsName,
+        @RequestParam(required = false) String buyerName,
+        @RequestParam(required = false) String buyerEmail,
+        @RequestParam(required = false) String buyerTel,
+        Model model
     ) {
         if (!model.containsAttribute("form")) {
             model.addAttribute("form", NicePayKeyInForm.seeded(orderId, amountMinor, goodsName, buyerName, buyerEmail, buyerTel));
@@ -67,10 +67,10 @@ public class NicePayWebController {
 
     @PostMapping("/keyin/approve")
     public String approve(
-            @Valid @ModelAttribute("form") NicePayKeyInForm form,
-            BindingResult bindingResult,
-            Model model,
-            RedirectAttributes redirectAttributes
+        @Valid @ModelAttribute("form") NicePayKeyInForm form,
+        BindingResult bindingResult,
+        Model model,
+        RedirectAttributes redirectAttributes
     ) {
         if (bindingResult.hasErrors()) {
             form.clearSensitiveFields();
@@ -80,7 +80,7 @@ public class NicePayWebController {
 
         if (!nicePayReadyForApproval()) {
             form.clearSensitiveFields();
-            model.addAttribute("submitError", "NicePay test approval is unavailable until the feature flag, provider credentials, MID, and merchant key are configured.");
+            model.addAttribute("submitError", "NicePay payment test is unavailable until the feature flag, provider credentials, MID, and merchant key are configured.");
             populatePageModel(model);
             return "payment/nicepay-keyin";
         }
@@ -101,16 +101,16 @@ public class NicePayWebController {
 
     @GetMapping("/result")
     public String approvalResult(
-            @RequestParam UUID paymentId,
-            @RequestParam(defaultValue = "false") boolean replayed,
-            Model model
+        @RequestParam UUID paymentId,
+        @RequestParam(defaultValue = "false") boolean replayed,
+        Model model
     ) {
         PaymentDetailView detail = paymentQueryApplicationService.getDetail(paymentId);
         if (detail.provider() != PaymentProvider.NICEPAY) {
             throw new PayBridgeException(
-                    HttpStatus.NOT_FOUND,
-                    ErrorCode.RESOURCE_NOT_FOUND,
-                    "NicePay payment not found: " + paymentId
+                HttpStatus.NOT_FOUND,
+                ErrorCode.RESOURCE_NOT_FOUND,
+                "NicePay payment not found: " + paymentId
             );
         }
         model.addAttribute("result", NicePayApprovalResultView.from(detail, replayed));
@@ -119,10 +119,10 @@ public class NicePayWebController {
 
     @PostMapping("/{paymentId}/cancel")
     public String fullCancel(
-            @PathVariable UUID paymentId,
-            @Valid @ModelAttribute("fullCancelForm") NicePayFullCancelForm form,
-            BindingResult bindingResult,
-            RedirectAttributes redirectAttributes
+        @PathVariable UUID paymentId,
+        @Valid @ModelAttribute("fullCancelForm") NicePayFullCancelForm form,
+        BindingResult bindingResult,
+        RedirectAttributes redirectAttributes
     ) {
         if (bindingResult.hasErrors()) {
             redirectAttributes.addFlashAttribute("opsError", bindingResult.getAllErrors().get(0).getDefaultMessage());
@@ -136,10 +136,10 @@ public class NicePayWebController {
 
     @PostMapping("/{paymentId}/partial-cancel")
     public String partialCancel(
-            @PathVariable UUID paymentId,
-            @Valid @ModelAttribute("partialCancelForm") NicePayPartialCancelForm form,
-            BindingResult bindingResult,
-            RedirectAttributes redirectAttributes
+        @PathVariable UUID paymentId,
+        @Valid @ModelAttribute("partialCancelForm") NicePayPartialCancelForm form,
+        BindingResult bindingResult,
+        RedirectAttributes redirectAttributes
     ) {
         if (bindingResult.hasErrors()) {
             redirectAttributes.addFlashAttribute("opsError", bindingResult.getAllErrors().get(0).getDefaultMessage());
@@ -147,9 +147,9 @@ public class NicePayWebController {
         }
 
         NicePayCancellationOutcome outcome = nicePayCancellationApplicationService.cancelPartially(
-                paymentId,
-                form.getCancelAmountMinor(),
-                form.getCancelReason()
+            paymentId,
+            form.getCancelAmountMinor(),
+            form.getCancelReason()
         );
         redirectAttributes.addFlashAttribute("opsMessage", "NicePay partial cancellation completed for payment " + outcome.paymentId() + ".");
         return "redirect:/payments/" + paymentId;
@@ -159,27 +159,27 @@ public class NicePayWebController {
         PayBridgeProperties.NicePay provider = payBridgeProperties.getProviders().getNicepay();
         boolean nicePayReady = nicePayReadyForApproval();
         model.addAttribute("nicePayEnabled", nicePayReady);
-        model.addAttribute("nicePayLocalOnly", payBridgeProperties.getFeatures().isNicepayLocalOnly());
         model.addAttribute("merchantConfigured", merchantConfigured(provider));
         model.addAttribute("merchantIdPreview", provider.getMerchantId() == null || provider.getMerchantId().isBlank() ? "(not configured)" : provider.getMerchantId());
         model.addAttribute("testWarnings", List.of(
-                "NicePay key-in is open for public test demos, but it must use provider test credentials and approved test card data only.",
-                "Approval requests are posted to NicePay using EUC-KR form encoding.",
-                "Do not enter real card numbers, real birth dates, real business numbers, or real personal information.",
-                "Partial cancellation on the test MID can temporarily hold the remaining card limit until it is released in the merchant portal."
+            "This NicePay demo uses a test MID and merchant key, but it still creates a real temporary charge on the card that is entered.",
+            "In the current test merchant setup, NicePay automatically cancels that charge before midnight on the same day.",
+            "Only enter a card and personal information if you are authorized to use them.",
+            "PayBridge does not store raw card numbers, buyer auth numbers, or card password digits."
         ));
         model.addAttribute("providerChecklist", List.of(
-                "Store the MID and merchant key in environment variables or SSM only.",
-                "PayBridge does not persist raw PAN, buyer auth number, or card password digits.",
-                "Use this route to exercise approval, full cancellation, and partial cancellation with test credentials."
+            "Review and replace the sample buyer values before you submit the form.",
+            "Keep the test MID and merchant key out of GitHub, Docker images, and public screenshots.",
+            "Treat this route as a controlled payment test, not as a fake card sandbox.",
+            "Refund and manual cancellation actions remain behind operator access."
         ));
     }
 
     private boolean nicePayReadyForApproval() {
         PayBridgeProperties.NicePay provider = payBridgeProperties.getProviders().getNicepay();
         return payBridgeProperties.getFeatures().isNicepayEnabled()
-                && provider.isEnabled()
-                && merchantConfigured(provider);
+            && provider.isEnabled()
+            && merchantConfigured(provider);
     }
 
     private boolean merchantConfigured(PayBridgeProperties.NicePay provider) {

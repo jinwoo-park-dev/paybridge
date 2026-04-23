@@ -6,39 +6,39 @@ import com.paybridge.providers.nicepay.NicePayApprovalOutcome;
 import java.util.UUID;
 
 public record NicePayApprovalResultView(
-        UUID paymentId,
-        boolean replayed,
-        String orderId,
-        String amountDisplay,
-        String status,
-        String tid,
-        String authCode,
-        String approvedAtDisplay
+    UUID paymentId,
+    boolean replayed,
+    String orderId,
+    String amountDisplay,
+    String status,
+    String tid,
+    String authCode,
+    String approvedAtDisplay
 ) {
-
-    public static NicePayApprovalResultView from(NicePayApprovalOutcome outcome, NicePayKeyInForm form) {
-        return new NicePayApprovalResultView(
-                outcome.paymentId(),
-                outcome.replayed(),
-                form.getOrderId(),
-                MoneyDisplayFormatter.formatMinor("KRW", form.getAmountMinor()),
-                "APPROVED",
-                outcome.tid(),
-                outcome.authCode(),
-                "Just recorded"
-        );
-    }
 
     public static NicePayApprovalResultView from(PaymentDetailView detail, boolean replayed) {
         return new NicePayApprovalResultView(
-                detail.paymentId(),
-                replayed,
-                detail.orderId(),
-                detail.amountDisplay(),
-                detail.status().name(),
-                dashToNull(detail.providerPaymentId()),
-                dashToNull(detail.providerTransactionId()),
-                detail.approvedAtDisplay()
+            detail.paymentId(),
+            replayed,
+            detail.orderId(),
+            detail.amountDisplay(),
+            detail.status().name(),
+            dashToNull(detail.providerPaymentId()),
+            dashToNull(detail.providerTransactionId()),
+            detail.approvedAtDisplay()
+        );
+    }
+
+    public static NicePayApprovalResultView from(NicePayApprovalOutcome outcome, NicePayKeyInForm form) {
+        return new NicePayApprovalResultView(
+            outcome.paymentId(),
+            outcome.replayed(),
+            form.getOrderId(),
+            MoneyDisplayFormatter.formatMinor("KRW", form.getAmountMinor()),
+            "APPROVED",
+            outcome.tid(),
+            outcome.authCode(),
+            "Just recorded"
         );
     }
 

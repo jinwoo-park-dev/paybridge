@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PayBridge — NicePay key-in</title>
+    <title>PayBridge</title>
     <link rel="stylesheet" th:href="@{/css/app.css}">
     <script defer th:src="@{/js/app.js}"></script>
 </head>
@@ -16,41 +16,44 @@
             <a th:if="${operatorAuthenticated}" th:href="@{/ops/transactions/search}">Transactions</a>
             <a th:if="${apiReferenceEnabled}" th:href="@{/swagger-ui/index.html}">API Reference</a>
             <form th:if="${operatorAuthenticated}" class="top-nav__logout-form" th:action="@{/operator/logout}" method="post">
-                <button class="top-nav__logout-button" type="submit">Operator sign-out</button>
+                <button class="top-nav__logout-button" type="submit">Operator logout</button>
             </form>
-            <a th:unless="${operatorAuthenticated}" th:href="${operatorLoginUrl}">Operator sign-in</a>
+            <a th:unless="${operatorAuthenticated}" th:href="${operatorLoginUrl}">Operator login</a>
         </div>
     </nav>
 
     <header class="section-hero">
         <a class="back-link" th:href="@{/checkout}">← Back to checkout</a>
-        <h1>NicePay key-in</h1>
-        <p class="muted">Merchant-hosted key-in test flow for provider-specific approval and cancellation handling.</p>
+        <h1>NicePay payment test form</h1>
+        <p class="muted">This page uses NicePay test merchant credentials, but the card you enter can still receive a real temporary charge that NicePay cancels before midnight on the same day.</p>
     </header>
 
     <div th:if="${submitError}" class="alert alert--error alert--dismissible" th:text="${submitError}">Provider error.</div>
+    <div class="alert alert--warning">
+        This NicePay payment test can place a real temporary charge on the submitted card. In the current test merchant setup, NicePay automatically cancels that charge before midnight on the same day.
+    </div>
     <div class="alert alert--info">
-        Public NicePay test mode is available without operator sign-in. Use only provider test credentials and approved test card data.
+        Review and replace the sample buyer fields before submitting. Only continue if you are authorized to use the card and personal information entered below. PayBridge does not store raw card numbers, buyer auth numbers, or card password digits.
     </div>
     <div class="alert alert--info" th:if="${!nicePayEnabled}">
-        NicePay key-in is unavailable until feature flags, MID, merchant key, and provider test credentials are configured.
+        NicePay payment test is unavailable until the feature flag, test MID, merchant key, and provider credentials are configured.
     </div>
 
     <section class="card card--wide card--soft">
         <div class="detail-grid">
             <article>
-                <h2>What this flow covers</h2>
+                <h2>What this page covers</h2>
                 <ul class="list">
                     <li th:each="warning : ${testWarnings}" th:text="${warning}">warning</li>
                 </ul>
             </article>
             <article>
-                <h2>Configuration and data handling</h2>
+                <h2>Configuration and safety checks</h2>
                 <ul class="list">
                     <li th:each="item : ${providerChecklist}" th:text="${item}">checklist</li>
                 </ul>
                 <dl class="definition-list definition-list--single">
-                    <dt>MID preview</dt>
+                    <dt>Configured test MID</dt>
                     <dd class="mono" th:text="${merchantIdPreview}">(not configured)</dd>
                 </dl>
             </article>
@@ -61,7 +64,7 @@
         <form th:action="@{/payments/nicepay/keyin/approve}" th:object="${form}" method="post" autocomplete="off">
             <div class="form-grid">
                 <label>
-                    <span>Order ID / Moid</span>
+                    <span>Order ID</span>
                     <input type="text" th:field="*{orderId}" placeholder="ORD-NP-2026-1001">
                 </label>
                 <label>
@@ -69,20 +72,20 @@
                     <input type="number" th:field="*{amountMinor}" min="1" step="1" placeholder="10000">
                 </label>
                 <label>
-                    <span>Goods / order description</span>
+                    <span>Order description</span>
                     <input type="text" th:field="*{goodsName}" placeholder="Monthly plan renewal">
                 </label>
                 <label>
                     <span>Buyer name</span>
-                    <input type="text" th:field="*{buyerName}" placeholder="Alex Kim">
+                    <input type="text" th:field="*{buyerName}" placeholder="Replace the sample value before submitting">
                 </label>
                 <label>
                     <span>Buyer email</span>
-                    <input type="email" th:field="*{buyerEmail}" placeholder="buyer@example.com">
+                    <input type="email" th:field="*{buyerEmail}" placeholder="Replace the sample value before submitting">
                 </label>
                 <label>
                     <span>Buyer phone</span>
-                    <input type="text" th:field="*{buyerTel}" inputmode="numeric" placeholder="01012345678">
+                    <input type="text" th:field="*{buyerTel}" inputmode="numeric" placeholder="Replace the sample value before submitting">
                 </label>
                 <label>
                     <span>Card number</span>
@@ -93,18 +96,18 @@
                     <input type="text" id="cardExpireYyMm" name="cardExpireYyMm" autocomplete="off" inputmode="numeric">
                 </label>
                 <label>
-                    <span>Buyer auth number (YYMMDD or business number)</span>
-                    <input type="text" id="buyerAuthNumber" name="buyerAuthNumber" autocomplete="off" inputmode="numeric">
+                    <span>Buyer auth number used by NicePay</span>
+                    <input type="text" id="buyerAuthNumber" name="buyerAuthNumber" autocomplete="off" inputmode="numeric" placeholder="Enter only if you are authorized to use it">
                 </label>
                 <label>
-                    <span>Card password prefix (optional if supported by the contract)</span>
-                    <input type="password" id="cardPasswordTwoDigits" name="cardPasswordTwoDigits" autocomplete="off" inputmode="numeric">
+                    <span>Card password prefix</span>
+                    <input type="password" id="cardPasswordTwoDigits" name="cardPasswordTwoDigits" autocomplete="off" inputmode="numeric" placeholder="Use only if you are authorized to enter it">
                 </label>
                 <label>
                     <span>Interest option</span>
                     <select th:field="*{cardInterest}">
                         <option value="0">0 - standard interest</option>
-                        <option value="1">1 - merchant no-interest</option>
+                        <option value="1">1 - merchant no interest</option>
                     </select>
                 </label>
                 <label>
@@ -116,12 +119,21 @@
                         <option value="06">06 - 6 months</option>
                     </select>
                 </label>
-
-                <label class="form-check form-check--wide">
-                    <input type="checkbox" th:field="*{testDataAcknowledged}">
-                    <span>I confirm this demo uses provider test credentials and approved test card data only.</span>
-                </label>
             </div>
+
+            <section class="card card--tight card--soft" style="margin-top: 18px; border: 2px solid #f0c36d; background: #fff8e6;">
+                <div class="table-header">
+                    <h2>Required acknowledgement</h2>
+                    <span class="status-pill">Review before submitting</span>
+                </div>
+                <p class="muted">You must explicitly confirm that you understand the charge behavior and that the payment attempt and submitted information are your responsibility.</p>
+                <label style="display: flex; align-items: flex-start; gap: 14px; margin-top: 12px; cursor: pointer;">
+                    <input type="checkbox" th:field="*{testDataAcknowledged}" style="width: 20px; height: 20px; margin-top: 4px; flex: 0 0 auto;">
+                    <span style="line-height: 1.6; color: #1f2d3d;">
+                        I confirm that I am authorized to use the card and personal information entered below, that I understand this NicePay payment test can create a real temporary charge that is automatically canceled before midnight on the same day, and that I accept responsibility for the payment attempt and the information I submit.
+                    </span>
+                </label>
+            </section>
 
             <div class="validation-summary" th:if="${#fields.hasAnyErrors()}">
                 <p class="muted"><strong>Validation errors</strong></p>
@@ -131,9 +143,9 @@
             </div>
 
             <div class="actions">
-                <button class="button button--primary" type="submit" th:disabled="${!nicePayEnabled}">Submit test approval</button>
+                <button class="button button--primary" type="submit" th:disabled="${!nicePayEnabled}">Submit NicePay payment test</button>
                 <a class="button button--secondary" th:if="${operatorAuthenticated}" th:href="@{/ops/transactions/search}">Open transaction search</a>
-                <a class="button button--secondary" th:unless="${operatorAuthenticated}" th:href="${operatorLoginUrl}">Operator sign-in for transaction search</a>
+                <a class="button button--secondary" th:unless="${operatorAuthenticated}" th:href="${operatorLoginUrl}">Operator login for transaction search</a>
             </div>
         </form>
     </section>

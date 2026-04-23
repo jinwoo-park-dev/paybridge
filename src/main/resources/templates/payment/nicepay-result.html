@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PayBridge — NicePay approval result</title>
+    <title>PayBridge</title>
     <link rel="stylesheet" th:href="@{/css/app.css}">
     <script defer th:src="@{/js/app.js}"></script>
 </head>
@@ -16,53 +16,64 @@
             <a th:if="${operatorAuthenticated}" th:href="@{/ops/transactions/search}">Transactions</a>
             <a th:if="${apiReferenceEnabled}" th:href="@{/swagger-ui/index.html}">API Reference</a>
             <form th:if="${operatorAuthenticated}" class="top-nav__logout-form" th:action="@{/operator/logout}" method="post">
-                <button class="top-nav__logout-button" type="submit">Operator sign-out</button>
+                <button class="top-nav__logout-button" type="submit">Operator logout</button>
             </form>
-            <a th:unless="${operatorAuthenticated}" th:href="${operatorLoginUrl}">Operator sign-in</a>
+            <a th:unless="${operatorAuthenticated}" th:href="${operatorLoginUrl}">Operator login</a>
         </div>
     </nav>
 
     <header class="section-hero">
         <a class="back-link" th:href="@{/checkout}">← Back to checkout</a>
-        <h1>NicePay approval result</h1>
-        <p class="muted">PayBridge submitted the test key-in approval and recorded it into the shared payment lifecycle without exposing card details back to the browser.</p>
+        <h1>NicePay payment test result</h1>
+        <p class="muted">This public result shows the recorded NicePay payment test without exposing card details back to the browser.</p>
     </header>
 
     <div class="alert" th:classappend="${result.replayed()} ? ' alert--info' : ' alert--success'">
-        <strong th:text="${result.replayed()} ? 'Approval was already recorded.' : 'Approval recorded successfully.'">Approval recorded successfully.</strong>
-        <span th:text="${result.replayed()} ? ' The existing PayBridge payment record was reused safely.' : ' A new PayBridge payment record was created.'">A new PayBridge payment record was created.</span>
+        <strong th:text="${result.replayed()} ? 'This NicePay payment was already recorded.' : 'NicePay payment recorded successfully.'">NicePay payment recorded successfully.</strong>
+        <span th:text="${result.replayed()} ? ' PayBridge reused the existing payment record instead of creating a duplicate.' : ' PayBridge created a new payment record for this payment test.'">PayBridge created a new payment record for this payment test.</span>
     </div>
 
     <section class="card card--wide">
         <div class="table-header">
-            <h2>Public approval summary</h2>
+            <h2>Public payment summary</h2>
             <span class="status status--enabled" th:text="${result.status()}">APPROVED</span>
         </div>
         <dl class="definition-list">
             <dt>Order ID</dt>
             <dd class="mono" th:text="${result.orderId()}">ORD-NP-...</dd>
+
             <dt>Amount</dt>
             <dd th:text="${result.amountDisplay()}">KRW 10,000</dd>
+
             <dt>Status</dt>
             <dd th:text="${result.status()}">APPROVED</dd>
+
             <dt>Approved at</dt>
             <dd th:text="${result.approvedAtDisplay()}">Just recorded</dd>
+
             <dt>NicePay TID</dt>
             <dd class="mono" th:text="${result.tid() == null ? '(reused existing record)' : result.tid()}">tid</dd>
+
             <dt>Auth code</dt>
             <dd class="mono" th:text="${result.authCode() == null || result.authCode().isBlank() ? '(not returned)' : result.authCode()}">auth</dd>
+
             <dt>PayBridge payment ID</dt>
             <dd class="mono" th:text="${result.paymentId()}">payment id</dd>
         </dl>
     </section>
 
     <section class="card card--wide card--soft">
-        <h2>Data handling note</h2>
-        <p class="muted">The public summary intentionally does not echo card number, buyer auth number, or card password digits. Operator-only pages still require sign-in for internal inspection and cancellation actions.</p>
+        <h2>Important after you test</h2>
+        <ul class="list">
+            <li>This NicePay setup uses test merchant credentials, but it can still create a real temporary charge on the submitted card.</li>
+            <li>In the current test merchant setup, NicePay automatically cancels that charge before midnight on the same day.</li>
+            <li>This public result intentionally omits card number, buyer auth number, and card password digits.</li>
+            <li>Operator pages still require login for transaction detail, refund, cancellation, audit records, and exports.</li>
+        </ul>
         <div class="actions">
-            <a class="button button--primary" th:href="@{/payments/nicepay/keyin}">Start another NicePay test</a>
+            <a class="button button--primary" th:href="@{/payments/nicepay/keyin}">Start another NicePay payment test</a>
             <a class="button button--secondary" th:if="${operatorAuthenticated}" th:href="@{/payments/{paymentId}(paymentId=${result.paymentId()})}">Open operator detail</a>
-            <a class="button button--secondary" th:unless="${operatorAuthenticated}" th:href="${operatorLoginUrl}">Operator sign-in for details</a>
+            <a class="button button--secondary" th:unless="${operatorAuthenticated}" th:href="${operatorLoginUrl}">Operator login for details</a>
         </div>
     </section>
 </div>
