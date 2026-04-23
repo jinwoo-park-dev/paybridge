@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PayBridge — Checkout</title>
+    <title>PayBridge</title>
     <link rel="stylesheet" th:href="@{/css/app.css}">
     <script defer th:src="@{/js/app.js}"></script>
 </head>
@@ -16,9 +16,9 @@
             <a th:if="${operatorAuthenticated}" th:href="@{/ops/transactions/search}">Transactions</a>
             <a th:if="${apiReferenceEnabled}" th:href="@{/swagger-ui/index.html}">API Reference</a>
             <form th:if="${operatorAuthenticated}" class="top-nav__logout-form" th:action="@{/operator/logout}" method="post">
-                <button class="top-nav__logout-button" type="submit">Operator sign-out</button>
+                <button class="top-nav__logout-button" type="submit">Operator logout</button>
             </form>
-            <a th:unless="${operatorAuthenticated}" th:href="${operatorLoginUrl}">Operator sign-in</a>
+            <a th:unless="${operatorAuthenticated}" th:href="${operatorLoginUrl}">Operator login</a>
         </div>
     </nav>
 
@@ -26,8 +26,7 @@
         <a class="back-link" th:href="@{/}">← Back to home</a>
         <h1 th:text="${pageTitle}">Choose payment flow</h1>
         <p class="muted">
-            Choose a provider-specific payment path from one entry page. Stripe is the primary browser checkout route.
-            NicePay can also be exposed for test-mode public demos when feature flags and provider test credentials are enabled.
+            Start a test payment from one entry page. Stripe uses a browser checkout. NicePay uses a keyed entry test form when provider test credentials are configured.
         </p>
     </header>
 
@@ -49,7 +48,7 @@
     <section class="card card--wide">
         <div class="table-header">
             <h2>Available payment paths</h2>
-            <span class="muted">Single entry, provider-specific handling</span>
+            <span class="muted">One entry point with separate provider handling</span>
         </div>
 
         <div class="provider-grid">
@@ -60,7 +59,7 @@
                 </div>
 
                 <p class="muted" th:text="${option.description}">
-                    Server-created PaymentIntent with Stripe-hosted confirmation.
+                    PayBridge creates the PaymentIntent and Stripe collects card details in the browser.
                 </p>
 
                 <ul class="list">
@@ -68,19 +67,19 @@
                 </ul>
 
                 <p class="muted" th:if="${option.operatorOnly}">
-                    Operator sign-in is required when this route is restricted to local use.
+                    Operator login is required before this flow can be opened.
                 </p>
 
                 <div class="actions">
                     <a class="button button--primary"
                        th:if="${option.enabled}"
                        th:href="${option.actionUrl}"
-                       th:text="${option.providerCode == 'stripe' ? 'Open Stripe checkout' : 'Open NicePay key-in'}">
+                       th:text="${option.buttonLabel}">
                         Continue
                     </a>
 
-                    <span class="status status--inactive" th:unless="${option.enabled}">
-                        Requires local configuration
+                    <span class="status status--inactive" th:unless="${option.enabled}" th:text="${option.unavailableMessage}">
+                        Not enabled in this environment
                     </span>
                 </div>
             </article>

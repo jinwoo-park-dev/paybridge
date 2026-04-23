@@ -23,77 +23,111 @@ public class CheckoutController {
     @GetMapping("/checkout")
     public String checkout(Model model) {
         model.addAttribute("projectName", payBridgeProperties.getApp().getDisplayName());
-        model.addAttribute("pageTitle", "Choose payment flow");
+        model.addAttribute("pageTitle", "Choose a test payment path");
         model.addAttribute("operatorLoginUrl", "/operator/login");
-        model.addAttribute("demoOrderNote", "Each provider link starts a fresh demo order ID so repeated test payments do not reuse the same PaymentIntent or provider transaction.");
+        model.addAttribute("demoOrderNote", "Stripe creates a fresh demo order ID for each browser checkout attempt. NicePay also starts from a generated test order ID.");
         model.addAttribute("selectionNotes", List.of(
-                "Start here to choose the provider-specific execution path.",
-                "Stripe is the primary browser checkout route and records a server-created PaymentIntent into the shared payment model.",
-                "NicePay key-in is available as a public test route when feature flags and provider test credentials are enabled."
+            "Start a public test payment from one page while each provider keeps its own execution path.",
+            "Stripe uses a browser checkout backed by a server created PaymentIntent.",
+            "NicePay uses a public keyed entry test form when provider test credentials are configured.",
+            "Operator login is still required for transaction detail, refunds, cancellations, audit records, and exports."
         ));
         model.addAttribute("checkoutOptions", List.of(
-                stripeOption(),
-                nicePayOption()
+            stripeOption(),
+            nicePayOption()
         ));
         return "checkout/index";
     }
 
     private CheckoutOptionView stripeOption() {
-        boolean enabled = payBridgeProperties.getFeatures().isStripeEnabled()
-                && payBridgeProperties.getProviders().getStripe().isEnabled();
+        PayBridgeProperties.FeatureFlags features = payBridgeProperties.getFeatures();
+        PayBridgeProperties.Stripe stripe = payBridgeProperties.getProviders().getStripe();
+        boolean featureEnabled = features.isStripeEnabled() && stripe.isEnabled();
+        Availability availability = availability(
+            featureEnabled,
+            hasText(stripe.getPublishableKey()) && hasText(stripe.getSecretKey()),
+            "Stripe test keys are not configured in this environment."
+        );
 
         String actionUrl = UriComponentsBuilder.fromPath("/payments/stripe/checkout")
-                .queryParam("orderId", StripeCheckoutForm.newDemoOrderId())
-                .queryParam("amountMinor", 1999)
-                .queryParam("currency", "USD")
-                .queryParam("description", "Monthly plan renewal")
-                .queryParam("customerEmail", "buyer@example.com")
-                .build()
-                .toUriString();
+            .queryParam("orderId", StripeCheckoutForm.newDemoOrderId())
+            .queryParam("amountMinor", 1999)
+            .queryParam("currency", "USD")
+            .queryParam("description", "Monthly plan renewal")
+            .queryParam("customerEmail", "buyer@example.com")
+            .build()
+            .toUriString();
 
         return new CheckoutOptionView(
-                "stripe",
-                "Stripe Payment Element",
-                "Primary browser checkout",
-                "Server-created PaymentIntent with Stripe-hosted confirmation and shared payment recording.",
-                actionUrl,
-                enabled,
-                false,
-                List.of(
-                        "Backend creates the PaymentIntent before browser confirmation",
-                        "Return-page verification, webhooks, and refunds converge on the same payment record",
-                        "Browser card entry stays inside Stripe-hosted fields"
-                )
+            "stripe",
+            "Stripe browser checkout",
+            "Primary test card flow",
+            "PayBridge creates the PaymentIntent on the server, then Stripe collects card details in the browser.",
+            actionUrl,
+            "Open Stripe checkout",
+            availability.enabled(),
+            false,
+            availability.unavailableMessage(),
+            List.of(
+                "Server creates the PaymentIntent before browser confirmation",
+                "Stripe fields collect card details without exposing them to PayBridge",
+                "Return page and webhook handling reuse the same recorded payment"
+            )
         );
     }
 
     private CheckoutOptionView nicePayOption() {
-        boolean enabled = payBridgeProperties.getFeatures().isNicepayEnabled()
-                && payBridgeProperties.getProviders().getNicepay().isEnabled();
+        PayBridgeProperties.FeatureFlags features = payBridgeProperties.getFeatures();
+        PayBridgeProperties.NicePay nicePay = payBridgeProperties.getProviders().getNicepay();
+        boolean featureEnabled = features.isNicepayEnabled() && nicePay.isEnabled();
+        Availability availability = availability(
+            featureEnabled,
+            hasText(nicePay.getMerchantId()) && hasText(nicePay.getMerchantKey()),
+            "NicePay test MID and merchant key are not configured in this environment."
+        );
 
         String actionUrl = UriComponentsBuilder.fromPath("/payments/nicepay/keyin")
-                .queryParam("orderId", NicePayKeyInForm.newDefaultOrderId())
-                .queryParam("amountMinor", 10000)
-                .queryParam("goodsName", "Monthly plan renewal")
-                .queryParam("buyerName", "Alex Kim")
-                .queryParam("buyerEmail", "buyer@example.com")
-                .queryParam("buyerTel", "01012345678")
-                .build()
-                .toUriString();
+            .queryParam("orderId", NicePayKeyInForm.newDefaultOrderId())
+            .queryParam("amountMinor", 10000)
+            .queryParam("goodsName", "Monthly plan renewal")
+            .queryParam("buyerName", "Alex Kim")
+            .queryParam("buyerEmail", "buyer@example.com")
+            .queryParam("buyerTel", "01012345678")
+            .build()
+            .toUriString();
 
         return new CheckoutOptionView(
-                "nicepay",
-                "NicePay key-in",
-                "Public test flow",
-                "Merchant-hosted key-in flow retained for provider-specific approval and cancellation handling.",
-                actionUrl,
-                enabled,
-                false,
-                List.of(
-                        "Approval, full cancellation, and partial cancellation stay on the provider path",
-                        "Provider-specific identifiers are stored on the shared payment record",
-                        "Merchant-hosted card entry should use only provider test credentials and test card data"
-                )
+            "nicepay",
+            "NicePay keyed entry",
+            "Public test form",
+            "PayBridge submits a provider test approval and records the result in the shared payment lifecycle.",
+            actionUrl,
+            "Open NicePay test form",
+            availability.enabled(),
+            false,
+            availability.unavailableMessage(),
+            List.of(
+                "Use provider test credentials and approved test card data only",
+                "Provider IDs are stored on the shared payment record",
+                "Refund and cancellation actions stay behind operator access"
+            )
         );
+    }
+
+    private Availability availability(boolean featureEnabled, boolean credentialsConfigured, String credentialMessage) {
+        if (!featureEnabled) {
+            return new Availability(false, "Disabled by the active deployment settings.");
+        }
+        if (!credentialsConfigured) {
+            return new Availability(false, credentialMessage);
+        }
+        return new Availability(true, "Available in this environment.");
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
+    }
+
+    private record Availability(boolean enabled, String unavailableMessage) {
     }
 }
