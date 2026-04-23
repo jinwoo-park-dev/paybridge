@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.paybridge.support.config.PayBridgeProperties;
 import com.paybridge.support.error.ErrorResponseFactory;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -39,6 +40,8 @@ class HomeControllerTest {
         features.setStripeEnabled(true);
         features.setNicepayEnabled(false);
         providers.getStripe().setEnabled(true);
+        providers.getStripe().setPublishableKey("pk_test_1234567890");
+        providers.getStripe().setSecretKey("sk_test_1234567890");
         providers.getNicepay().setEnabled(false);
         given(payBridgeProperties.getApp()).willReturn(app);
         given(payBridgeProperties.getFeatures()).willReturn(features);
@@ -46,10 +49,12 @@ class HomeControllerTest {
 
         mockMvc.perform(get("/"))
             .andExpect(status().isOk())
-            .andExpect(content().string(org.hamcrest.Matchers.containsString("PayBridge")))
-            .andExpect(content().string(org.hamcrest.Matchers.containsString("Open checkout")))
-            .andExpect(content().string(org.hamcrest.Matchers.containsString("Enabled")))
-            .andExpect(content().string(org.hamcrest.Matchers.containsString("Requires local configuration")));
+            .andExpect(content().string(Matchers.containsString("<title>PayBridge</title>")))
+            .andExpect(content().string(Matchers.containsString("Open checkout")))
+            .andExpect(content().string(Matchers.containsString("Available")))
+            .andExpect(content().string(Matchers.containsString("Not configured in this environment")))
+            .andExpect(content().string(Matchers.not(Matchers.containsString("Requires local configuration"))))
+            .andExpect(content().string(Matchers.not(Matchers.containsString("Modular Monolith"))));
     }
 
     @Test
@@ -62,6 +67,8 @@ class HomeControllerTest {
         features.setStripeEnabled(true);
         features.setNicepayEnabled(false);
         providers.getStripe().setEnabled(true);
+        providers.getStripe().setPublishableKey("pk_test_1234567890");
+        providers.getStripe().setSecretKey("sk_test_1234567890");
         providers.getNicepay().setEnabled(false);
         given(payBridgeProperties.getApp()).willReturn(app);
         given(payBridgeProperties.getFeatures()).willReturn(features);
@@ -75,7 +82,6 @@ class HomeControllerTest {
 
         mockMvc.perform(get("/").principal(operatorAuthentication))
             .andExpect(status().isOk())
-            .andExpect(content().string(org.hamcrest.Matchers.containsString("Operator sign-out")));
+            .andExpect(content().string(Matchers.containsString("Operator sign-out")));
     }
-
 }

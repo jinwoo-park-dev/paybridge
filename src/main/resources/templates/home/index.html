@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title th:text="|${projectName} — ${projectSubtitle}|">PayBridge — Payment Orchestration Service</title>
+    <title>PayBridge</title>
     <link rel="stylesheet" th:href="@{/css/app.css}">
     <script defer th:src="@{/js/app.js}"></script>
 </head>
@@ -23,36 +23,29 @@
     </nav>
 
     <header class="hero">
-        <p class="hero__eyebrow">PayBridge</p>
         <h1 class="hero__title" th:text="${projectName}">PayBridge</h1>
-        <p class="hero__subtitle" th:text="${projectSubtitle}">Payment Orchestration Service</p>
+        <p class="hero__subtitle" th:text="${projectTagline}">Payment orchestration backend</p>
         <p class="hero__copy">
-            Shared payment lifecycle across Stripe and NicePay, provider-specific execution,
-            transaction search, reversal controls, and related JSON endpoints.
+            Java 21 and Spring Boot payments backend that keeps payment and reversal flows consistent across Stripe and NicePay,
+            with retry safe recording, webhook deduplication, operator review pages.
         </p>
-        <div class="hero__badges">
-            <span class="badge">Backend: <strong>Java 21 · Spring Boot 3</strong></span>
-            <span class="badge">UI: <strong th:text="${uiStrategy}">Spring MVC + server-rendered pages + minimal JS</strong></span>
-            <span class="badge">Architecture: <strong th:text="${architectureStyle}">Modular Monolith</strong></span>
-            <span class="badge">Controls: <strong>Idempotency · Audit · Outbox · Webhooks</strong></span>
-        </div>
     </header>
 
     <section class="metrics-grid">
         <article class="metric-card">
             <span class="metric-card__label">Shared lifecycle</span>
             <strong class="metric-card__value">Approvals, refunds, cancellations, and partial reversals</strong>
-            <p class="metric-card__copy">Provider-specific execution paths write into one payment record and one reversal history.</p>
+            <p class="metric-card__copy">Provider execution paths write into one payment record and one reversal history.</p>
         </article>
         <article class="metric-card">
             <span class="metric-card__label">Operator visibility</span>
-            <strong class="metric-card__value">Search, detail, and JSON endpoints</strong>
-            <p class="metric-card__copy">Search by internal or provider identifiers, inspect payment detail, and open related read-only endpoints.</p>
+            <strong class="metric-card__value">Search, detail, and JSON exports</strong>
+            <p class="metric-card__copy">Authenticated operator pages expose transactions, audit logs, outbox records, and recent webhook activity.</p>
         </article>
         <article class="metric-card">
-            <span class="metric-card__label">Write-path safety</span>
-            <strong class="metric-card__value">Duplicate-safe recording and traceability</strong>
-            <p class="metric-card__copy">Correlation IDs, masked logging, audit rows, outbox persistence, and Stripe webhook deduplication are built into the service flow.</p>
+            <span class="metric-card__label">Runtime proof</span>
+            <strong class="metric-card__value">Tests, CI/CD, and AWS demo</strong>
+            <p class="metric-card__copy">GitHub Actions runs automated tests before deploying the Docker Compose stack to one Graviton EC2 host with PostgreSQL on the same instance.</p>
         </article>
     </section>
 
@@ -69,15 +62,15 @@
             <div class="provider-grid">
                 <article class="provider-card">
                     <h3>Stripe</h3>
-                    <p>Hosted card checkout with PaymentIntent creation, browser confirmation, refunds, and webhook follow-up processing.</p>
-                    <span class="status" th:classappend="${stripeEnabled} ? ' status--enabled' : ' status--inactive'"
-                          th:text="${stripeEnabled} ? 'Enabled' : 'Requires local configuration'">Enabled</span>
+                    <p>Browser payment flow using Stripe Payment Element, server created PaymentIntents, return page verification, refunds, and webhooks.</p>
+                    <span class="status" th:classappend="${stripeAvailable} ? ' status--enabled' : ' status--inactive'"
+                          th:text="${stripeAvailable} ? 'Available' : ${providerUnavailableText}">Available</span>
                 </article>
                 <article class="provider-card">
-                    <h3>NicePay key-in</h3>
-                    <p>Public test route for merchant-hosted approval plus operator-only cancellation behavior.</p>
-                    <span class="status" th:classappend="${nicepayEnabled} ? ' status--enabled' : ' status--inactive'"
-                          th:text="${nicepayEnabled} ? 'Enabled' : 'Requires local configuration'">Requires local configuration</span>
+                    <h3>NicePay test payment</h3>
+                    <p>Public test payment flow using provider test credentials. Approval is open for demo use, while cancellations and transaction detail stay behind operator sign-in.</p>
+                    <span class="status" th:classappend="${nicepayAvailable} ? ' status--enabled' : ' status--inactive'"
+                          th:text="${nicepayAvailable} ? 'Available' : ${providerUnavailableText}">Available</span>
                 </article>
             </div>
         </section>
@@ -103,7 +96,13 @@
     </main>
 
     <footer class="footer">
-        <p>PayBridge — Payment Orchestration Service</p>
+        <p>
+            <a href="mailto:jinwoopark.dev@gmail.com">Email</a>
+            <span aria-hidden="true"> · </span>
+            <a href="https://github.com/jinwoo-park-dev" target="_blank" rel="noopener noreferrer">GitHub</a>
+            <span aria-hidden="true"> · </span>
+            <a href="https://linkedin.com/in/jinwoo-park-dev" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+        </p>
     </footer>
 </div>
 </body>
