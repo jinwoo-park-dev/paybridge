@@ -43,58 +43,60 @@ class PaymentOpsControllerTest {
     @Test
     void rendersTransactionSearchPage() throws Exception {
         TransactionSummaryView summaryView = new TransactionSummaryView(
-                UUID.fromString("11111111-1111-1111-1111-111111111111"),
-                "ORD-1001",
-                PaymentProvider.NICEPAY,
-                PaymentStatus.APPROVED,
-                "KRW 10,000",
-                "KRW 10,000",
-                "-",
-                "TID-1001",
-                "2026-03-19 12:00:00 UTC"
+            UUID.fromString("11111111-1111-1111-1111-111111111111"),
+            "ORD-1001",
+            PaymentProvider.NICEPAY,
+            PaymentStatus.APPROVED,
+            "KRW 10,000",
+            "KRW 10,000",
+            "-",
+            "TID-1001",
+            "2026-03-19 12:00:00 UTC"
         );
         given(paymentQueryApplicationService.search(org.mockito.ArgumentMatchers.any()))
-                .willReturn(List.of(summaryView));
+            .willReturn(List.of(summaryView));
 
         mockMvc.perform(get("/ops/transactions/search"))
-                .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Transaction Search")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("ORD-1001")));
+            .andExpect(status().isOk())
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("Transaction search")))
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("Operator view")))
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("ORD-1001")));
     }
 
     @Test
     void rendersPaymentDetailPage() throws Exception {
         UUID paymentId = UUID.fromString("11111111-1111-1111-1111-111111111111");
         PaymentDetailView detailView = new PaymentDetailView(
-                paymentId,
-                "ORD-1001",
-                PaymentProvider.STRIPE,
-                PaymentStatus.PARTIALLY_REVERSED,
-                "USD 120.00",
+            paymentId,
+            "ORD-1001",
+            PaymentProvider.STRIPE,
+            PaymentStatus.PARTIALLY_REVERSED,
+            "USD 120.00",
+            "USD 20.00",
+            "USD",
+            "pi_123",
+            "-",
+            "2026-03-19 12:00:00 UTC",
+            true,
+            true,
+            List.of(new PaymentReversalView(
+                UUID.fromString("22222222-2222-2222-2222-222222222222"),
+                ReversalType.PARTIAL,
+                ReversalStatus.SUCCEEDED,
+                "USD 100.00",
                 "USD 20.00",
-                "USD",
-                "pi_123",
-                "-",
-                "2026-03-19 12:00:00 UTC",
-                true,
-                true,
-                List.of(new PaymentReversalView(
-                        UUID.fromString("22222222-2222-2222-2222-222222222222"),
-                        ReversalType.PARTIAL,
-                        ReversalStatus.SUCCEEDED,
-                        "USD 100.00",
-                        "USD 20.00",
-                        "customer requested partial refund",
-                        "re_123",
-                        "2026-03-19 12:10:00 UTC"
-                ))
+                "customer requested partial refund",
+                "re_123",
+                "2026-03-19 12:10:00 UTC"
+            ))
         );
         given(paymentQueryApplicationService.getDetail(paymentId)).willReturn(detailView);
 
         mockMvc.perform(get("/payments/{paymentId}", paymentId))
-                .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Payment Detail")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("ORD-1001")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Stripe refund actions")));
+            .andExpect(status().isOk())
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("Payment detail")))
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("ORD-1001")))
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("Related operator APIs")))
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("Stripe refund actions")));
     }
 }

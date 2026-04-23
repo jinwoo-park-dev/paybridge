@@ -52,26 +52,28 @@ class PaymentOpsPagesIntegrationTest extends AbstractPostgresIntegrationTest {
     @Test
     void rendersSearchAndDetailPagesAgainstPostgresContainer() throws Exception {
         UUID paymentId = paymentCommandApplicationService.recordApprovedPayment(
-                new CreateApprovedPaymentCommand(
-                        "ORD-OPS-1001",
-                        PaymentProvider.STRIPE,
-                        "pi_ops_1001",
-                        "ch_ops_1001",
-                        1_999L,
-                        true,
-                        "USD",
-                        Instant.parse("2026-03-20T02:00:00Z")
-                )
+            new CreateApprovedPaymentCommand(
+                "ORD-OPS-1001",
+                PaymentProvider.STRIPE,
+                "pi_ops_1001",
+                "ch_ops_1001",
+                1_999L,
+                true,
+                "USD",
+                Instant.parse("2026-03-20T02:00:00Z")
+            )
         );
 
         mockMvc.perform(get("/ops/transactions/search").with(user("operator").roles("OPERATOR")).param("orderId", "ORD-OPS-1001"))
-                .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Transaction Search")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("ORD-OPS-1001")));
+            .andExpect(status().isOk())
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("Transaction search")))
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("Operator view")))
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("ORD-OPS-1001")));
 
         mockMvc.perform(get("/payments/{paymentId}", paymentId).with(user("operator").roles("OPERATOR")))
-                .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Payment Detail")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Stripe refund actions")));
+            .andExpect(status().isOk())
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("Payment detail")))
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("Related operator APIs")))
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("Stripe refund actions")));
     }
 }
