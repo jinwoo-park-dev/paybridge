@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PayBridge — Stripe Checkout</title>
+    <title>PayBridge</title>
     <link rel="stylesheet" th:href="@{/css/app.css}">
     <script defer th:src="@{/js/app.js}"></script>
 </head>
@@ -16,33 +16,33 @@
             <a th:if="${operatorAuthenticated}" th:href="@{/ops/transactions/search}">Transactions</a>
             <a th:if="${apiReferenceEnabled}" th:href="@{/swagger-ui/index.html}">API Reference</a>
             <form th:if="${operatorAuthenticated}" class="top-nav__logout-form" th:action="@{/operator/logout}" method="post">
-                <button class="top-nav__logout-button" type="submit">Operator sign-out</button>
+                <button class="top-nav__logout-button" type="submit">Operator logout</button>
             </form>
-            <a th:unless="${operatorAuthenticated}" th:href="${operatorLoginUrl}">Operator sign-in</a>
+            <a th:unless="${operatorAuthenticated}" th:href="${operatorLoginUrl}">Operator login</a>
         </div>
     </nav>
 
     <header class="section-hero">
         <a class="back-link" th:href="@{/checkout}">← Back to checkout</a>
-        <h1>Stripe Payment Element</h1>
-        <p class="muted">Primary browser checkout path: the backend creates the PaymentIntent, Stripe-hosted fields confirm the payment, and PayBridge records the result into the shared payment record.</p>
+        <h1>Stripe browser checkout</h1>
+        <p class="muted">PayBridge creates the PaymentIntent on the server. Stripe collects card details in the browser. The return page records the verified result.</p>
     </header>
 
     <div th:if="${submitError}" class="alert alert--error alert--dismissible" th:text="${submitError}">Provider error.</div>
     <div class="alert alert--info" th:if="${!stripeEnabled}">
-        Stripe checkout is unavailable until the required local credentials are configured.
+        Stripe checkout is not enabled in this environment. Enable the Stripe feature flag and configure test keys before using this page.
     </div>
 
     <section class="card card--wide card--soft">
         <div class="detail-grid">
             <article>
-                <h2>What this flow covers</h2>
+                <h2>What this page covers</h2>
                 <ul class="list">
                     <li th:each="warning : ${testWarnings}" th:text="${warning}">warning</li>
                 </ul>
             </article>
             <article>
-                <h2>Configuration and control points</h2>
+                <h2>Configuration checks</h2>
                 <ul class="list">
                     <li th:each="item : ${providerChecklist}" th:text="${item}">checklist</li>
                 </ul>
@@ -62,7 +62,7 @@
                     <input type="text" th:field="*{orderId}" placeholder="ORD-STR-2026-1001">
                 </label>
                 <label>
-                    <span>Amount (minor units)</span>
+                    <span>Amount in minor units</span>
                     <input type="number" th:field="*{amountMinor}" min="50" step="1" placeholder="1999">
                 </label>
                 <label>
@@ -89,7 +89,7 @@
             <div class="actions">
                 <button class="button button--primary" type="submit">Create Stripe PaymentIntent</button>
                 <a class="button button--secondary" th:if="${operatorAuthenticated}" th:href="@{/ops/transactions/search}">Open transaction search</a>
-                <a class="button button--secondary" th:unless="${operatorAuthenticated}" th:href="${operatorLoginUrl}">Operator sign-in for transaction search</a>
+                <a class="button button--secondary" th:unless="${operatorAuthenticated}" th:href="${operatorLoginUrl}">Operator login for transaction search</a>
             </div>
         </form>
     </section>
@@ -107,7 +107,7 @@
 
         <div class="detail-grid">
             <article>
-                <h3>Server-created payment summary</h3>
+                <h3>Payment summary from PayBridge</h3>
                 <dl class="definition-list">
                     <dt>Order ID</dt><dd th:text="${checkout.orderId()}">orderId</dd>
                     <dt>Amount</dt><dd th:text="${checkout.amountDisplay()}">USD 19.99</dd>
@@ -119,9 +119,9 @@
             <article>
                 <h3>Recording sequence</h3>
                 <ol class="list list--ordered">
-                    <li>Backend creates the PaymentIntent and returns a client secret.</li>
-                    <li>Stripe-hosted fields collect card details and confirm the payment in-browser.</li>
-                    <li>Return-page verification records the payment; webhook processing adds asynchronous confirmation and duplicate protection.</li>
+                    <li>PayBridge creates the PaymentIntent and returns a client secret.</li>
+                    <li>Stripe fields collect card details and confirm the payment in the browser.</li>
+                    <li>The return page records the payment; webhooks add asynchronous confirmation and duplicate event protection.</li>
                 </ol>
             </article>
         </div>

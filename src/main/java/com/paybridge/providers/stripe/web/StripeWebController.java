@@ -34,9 +34,9 @@ public class StripeWebController {
     private final PayBridgeProperties payBridgeProperties;
 
     public StripeWebController(
-            StripePaymentIntentApplicationService stripePaymentIntentApplicationService,
-            StripeRefundApplicationService stripeRefundApplicationService,
-            PayBridgeProperties payBridgeProperties
+        StripePaymentIntentApplicationService stripePaymentIntentApplicationService,
+        StripeRefundApplicationService stripeRefundApplicationService,
+        PayBridgeProperties payBridgeProperties
     ) {
         this.stripePaymentIntentApplicationService = stripePaymentIntentApplicationService;
         this.stripeRefundApplicationService = stripeRefundApplicationService;
@@ -45,13 +45,13 @@ public class StripeWebController {
 
     @GetMapping("/checkout")
     public String renderCheckoutPage(
-            @RequestParam(required = false) String orderId,
-            @RequestParam(required = false) Long amountMinor,
-            @RequestParam(required = false) String currency,
-            @RequestParam(required = false) String description,
-            @RequestParam(required = false) String customerEmail,
-            Model model,
-            HttpServletRequest request
+        @RequestParam(required = false) String orderId,
+        @RequestParam(required = false) Long amountMinor,
+        @RequestParam(required = false) String currency,
+        @RequestParam(required = false) String description,
+        @RequestParam(required = false) String customerEmail,
+        Model model,
+        HttpServletRequest request
     ) {
         if (!model.containsAttribute("form")) {
             model.addAttribute("form", StripeCheckoutForm.seeded(orderId, amountMinor, currency, description, customerEmail));
@@ -62,10 +62,10 @@ public class StripeWebController {
 
     @PostMapping("/payment-intent")
     public String createPaymentIntent(
-            @Valid @ModelAttribute("form") StripeCheckoutForm form,
-            BindingResult bindingResult,
-            Model model,
-            HttpServletRequest request
+        @Valid @ModelAttribute("form") StripeCheckoutForm form,
+        BindingResult bindingResult,
+        Model model,
+        HttpServletRequest request
     ) {
         if (bindingResult.hasErrors()) {
             populatePageModel(model, null, request);
@@ -87,16 +87,16 @@ public class StripeWebController {
 
     @GetMapping("/return")
     public String handleReturn(
-            @RequestParam("payment_intent") String paymentIntentId,
-            Model model
+        @RequestParam("payment_intent") String paymentIntentId,
+        Model model
     ) {
         return renderPublicResult(paymentIntentId, model);
     }
 
     @GetMapping("/result")
     public String renderResult(
-            @RequestParam("payment_intent") String paymentIntentId,
-            Model model
+        @RequestParam("payment_intent") String paymentIntentId,
+        Model model
     ) {
         return renderPublicResult(paymentIntentId, model);
     }
@@ -113,10 +113,10 @@ public class StripeWebController {
 
     @PostMapping("/{paymentId}/refund")
     public String fullRefund(
-            @PathVariable UUID paymentId,
-            @Valid @ModelAttribute("stripeFullRefundForm") StripeFullRefundForm form,
-            BindingResult bindingResult,
-            RedirectAttributes redirectAttributes
+        @PathVariable UUID paymentId,
+        @Valid @ModelAttribute("stripeFullRefundForm") StripeFullRefundForm form,
+        BindingResult bindingResult,
+        RedirectAttributes redirectAttributes
     ) {
         if (bindingResult.hasErrors()) {
             redirectAttributes.addFlashAttribute("opsError", bindingResult.getAllErrors().get(0).getDefaultMessage());
@@ -129,10 +129,10 @@ public class StripeWebController {
 
     @PostMapping("/{paymentId}/partial-refund")
     public String partialRefund(
-            @PathVariable UUID paymentId,
-            @Valid @ModelAttribute("stripePartialRefundForm") StripePartialRefundForm form,
-            BindingResult bindingResult,
-            RedirectAttributes redirectAttributes
+        @PathVariable UUID paymentId,
+        @Valid @ModelAttribute("stripePartialRefundForm") StripePartialRefundForm form,
+        BindingResult bindingResult,
+        RedirectAttributes redirectAttributes
     ) {
         if (bindingResult.hasErrors()) {
             redirectAttributes.addFlashAttribute("opsError", bindingResult.getAllErrors().get(0).getDefaultMessage());
@@ -152,14 +152,14 @@ public class StripeWebController {
         model.addAttribute("publishableKeyPreview", previewKey(publishableKey));
         model.addAttribute("returnUrl", buildReturnUrl(request));
         model.addAttribute("testWarnings", List.of(
-                "The backend creates the PaymentIntent and records the payment; Stripe.js only handles secure in-browser confirmation.",
-                "Use a fresh demo order ID for each new payment attempt to avoid replaying an already completed PaymentIntent.",
-                "Webhook verification also requires PAYBRIDGE_STRIPE_WEBHOOK_SECRET."
+            "PayBridge creates the PaymentIntent on the server and records the verified result.",
+            "Use a fresh demo order ID for each payment attempt to avoid reusing a completed PaymentIntent.",
+            "Stripe webhooks may confirm the same PaymentIntent later, so PayBridge treats repeated events as duplicate acknowledgements."
         ));
         model.addAttribute("providerChecklist", List.of(
-                "Use Stripe test mode for local runs and public demos.",
-                "Keep the publishable key in the browser and the secret key only in server-side configuration.",
-                "Return-page verification and webhook processing should converge on the same payment record."
+            "Use Stripe test mode for local runs and the public demo.",
+            "Keep the publishable key in the browser and the secret key in server configuration only.",
+            "The return page and webhook path should converge on the same recorded payment."
         ));
         if (checkout != null) {
             model.addAttribute("checkout", checkout);
@@ -179,8 +179,8 @@ public class StripeWebController {
 
     private String buildReturnUrl(HttpServletRequest request) {
         return ServletUriComponentsBuilder.fromContextPath(request)
-                .path("/payments/stripe/return")
-                .build()
-                .toUriString();
+            .path("/payments/stripe/return")
+            .build()
+            .toUriString();
     }
 }
