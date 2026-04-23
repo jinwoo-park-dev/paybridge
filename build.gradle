@@ -5,7 +5,7 @@ plugins {
 }
 
 group = 'com.paybridge'
-version = '0.1.0'
+version = '1.0.0'
 description = 'Multi-provider payment orchestration service'
 
 ext {
@@ -22,34 +22,35 @@ java {
     }
 }
 
-configurations {
-    compileOnly {
-        extendsFrom annotationProcessor
-    }
-}
-
 repositories {
     mavenCentral()
 }
 
 dependencies {
+    // Spring Boot application surface
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
-    implementation 'org.springframework.boot:spring-boot-starter-actuator'
-    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-security'
 
-    runtimeOnly 'org.postgresql:postgresql'
+    // Persistence and database migration
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation "org.flywaydb:flyway-core:${flywayVersion}"
     implementation "org.flywaydb:flyway-database-postgresql:${flywayVersion}"
-    implementation "org.springdoc:springdoc-openapi-starter-webmvc-ui:${springdocVersion}"
+    runtimeOnly 'org.postgresql:postgresql'
+
+    // Provider SDKs and API documentation
     implementation "com.stripe:stripe-java:${stripeJavaVersion}"
+    implementation "org.springdoc:springdoc-openapi-starter-webmvc-ui:${springdocVersion}"
+
+    // Operations and observability
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'io.micrometer:micrometer-registry-prometheus'
 
+    // Build-time metadata generation
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
-    compileOnly 'org.springframework.boot:spring-boot-configuration-processor'
 
+    // Test support
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
     testImplementation 'com.h2database:h2'
