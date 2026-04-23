@@ -54,9 +54,10 @@ class NicePayWebControllerTest {
         stubConfiguration();
 
         mockMvc.perform(get("/payments/nicepay/keyin"))
-                .andExpect(status().isOk())
-                .andExpect(content().string(Matchers.containsString("NicePay key-in")))
-                .andExpect(content().string(Matchers.containsString("Public NicePay test mode")));
+            .andExpect(status().isOk())
+            .andExpect(content().string(Matchers.containsString("NicePay payment test form")))
+            .andExpect(content().string(Matchers.containsString("real temporary charge")))
+            .andExpect(content().string(Matchers.containsString("before midnight on the same day")));
     }
 
     @Test
@@ -65,25 +66,25 @@ class NicePayWebControllerTest {
 
         UUID paymentId = UUID.fromString("11111111-1111-1111-1111-111111111111");
         given(nicePayApprovalApplicationService.approve(any())).willReturn(
-                new NicePayApprovalOutcome(paymentId, false, "TID-1001", "AUTH-1001")
+            new NicePayApprovalOutcome(paymentId, false, "TID-1001", "AUTH-1001")
         );
 
         mockMvc.perform(post("/payments/nicepay/keyin/approve")
-                        .param("orderId", "ORD-NP-2026-1001")
-                        .param("amountMinor", "10000")
-                        .param("goodsName", "Monthly plan renewal")
-                        .param("buyerName", "Alex Kim")
-                        .param("buyerEmail", "buyer@example.com")
-                        .param("buyerTel", "01012345678")
-                        .param("cardNumber", "4111111111111111")
-                        .param("cardExpireYyMm", "2512")
-                        .param("buyerAuthNumber", "800101")
-                        .param("cardPasswordTwoDigits", "12")
-                        .param("cardInterest", "0")
-                        .param("cardQuota", "00")
-                        .param("testDataAcknowledged", "true"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/payments/nicepay/result?paymentId=11111111-1111-1111-1111-111111111111&replayed=false"));
+                .param("orderId", "ORD-NP-2026-1001")
+                .param("amountMinor", "10000")
+                .param("goodsName", "Monthly plan renewal")
+                .param("buyerName", "Alex Kim")
+                .param("buyerEmail", "buyer@example.com")
+                .param("buyerTel", "01012345678")
+                .param("cardNumber", "4111111111111111")
+                .param("cardExpireYyMm", "2512")
+                .param("buyerAuthNumber", "800101")
+                .param("cardPasswordTwoDigits", "12")
+                .param("cardInterest", "0")
+                .param("cardQuota", "00")
+                .param("testDataAcknowledged", "true"))
+            .andExpect(status().is3xxRedirection())
+            .andExpect(redirectedUrl("/payments/nicepay/result?paymentId=11111111-1111-1111-1111-111111111111&replayed=false"));
     }
 
     @Test
@@ -92,30 +93,29 @@ class NicePayWebControllerTest {
 
         UUID paymentId = UUID.fromString("11111111-1111-1111-1111-111111111111");
         given(paymentQueryApplicationService.getDetail(paymentId)).willReturn(new PaymentDetailView(
-                paymentId,
-                "ORD-NP-2026-1001",
-                PaymentProvider.NICEPAY,
-                PaymentStatus.APPROVED,
-                "KRW 10,000",
-                "KRW 10,000",
-                "KRW",
-                "TID-1001",
-                "AUTH-1001",
-                "2026-04-21 20:00:00 UTC",
-                true,
-                true,
-                List.of()
+            paymentId,
+            "ORD-NP-2026-1001",
+            PaymentProvider.NICEPAY,
+            PaymentStatus.APPROVED,
+            "KRW 10,000",
+            "KRW 10,000",
+            "KRW",
+            "TID-1001",
+            "AUTH-1001",
+            "2026-04-23 18:20:00 UTC",
+            true,
+            true,
+            List.of()
         ));
 
         mockMvc.perform(get("/payments/nicepay/result")
-                        .param("paymentId", paymentId.toString()))
-                .andExpect(status().isOk())
-                .andExpect(content().string(Matchers.containsString("NicePay approval result")))
-                .andExpect(content().string(Matchers.containsString("Approval recorded successfully.")))
-                .andExpect(content().string(Matchers.containsString("ORD-NP-2026-1001")))
-                .andExpect(content().string(Matchers.containsString("TID-1001")))
-                .andExpect(content().string(Matchers.not(Matchers.containsString("4111111111111111"))))
-                .andExpect(content().string(Matchers.not(Matchers.containsString("800101"))));
+                .param("paymentId", paymentId.toString()))
+            .andExpect(status().isOk())
+            .andExpect(content().string(Matchers.containsString("NicePay payment test result")))
+            .andExpect(content().string(Matchers.containsString("real temporary charge")))
+            .andExpect(content().string(Matchers.containsString("before midnight on the same day")))
+            .andExpect(content().string(Matchers.not(Matchers.containsString("4111111111111111"))))
+            .andExpect(content().string(Matchers.not(Matchers.containsString("800101"))));
     }
 
     @Test
@@ -123,45 +123,45 @@ class NicePayWebControllerTest {
         stubConfiguration();
 
         mockMvc.perform(post("/payments/nicepay/keyin/approve")
-                        .param("orderId", "ORD-NP-2026-1001")
-                        .param("amountMinor", "10000")
-                        .param("goodsName", "가".repeat(21))
-                        .param("buyerName", "Alex Kim")
-                        .param("buyerEmail", "buyer@example.com")
-                        .param("buyerTel", "01012345678")
-                        .param("cardNumber", "4111111111111111")
-                        .param("cardExpireYyMm", "2512")
-                        .param("buyerAuthNumber", "800101")
-                        .param("cardPasswordTwoDigits", "12")
-                        .param("cardInterest", "0")
-                        .param("cardQuota", "00")
-                        .param("testDataAcknowledged", "true"))
-                .andExpect(status().isOk())
-                .andExpect(content().string(Matchers.not(Matchers.containsString("4111111111111111"))))
-                .andExpect(content().string(Matchers.not(Matchers.containsString("2512"))))
-                .andExpect(content().string(Matchers.not(Matchers.containsString("800101"))));
+                .param("orderId", "ORD-NP-2026-1001")
+                .param("amountMinor", "10000")
+                .param("goodsName", "가".repeat(21))
+                .param("buyerName", "Alex Kim")
+                .param("buyerEmail", "buyer@example.com")
+                .param("buyerTel", "01012345678")
+                .param("cardNumber", "4111111111111111")
+                .param("cardExpireYyMm", "2512")
+                .param("buyerAuthNumber", "800101")
+                .param("cardPasswordTwoDigits", "12")
+                .param("cardInterest", "0")
+                .param("cardQuota", "00")
+                .param("testDataAcknowledged", "true"))
+            .andExpect(status().isOk())
+            .andExpect(content().string(Matchers.not(Matchers.containsString("4111111111111111"))))
+            .andExpect(content().string(Matchers.not(Matchers.containsString("2512"))))
+            .andExpect(content().string(Matchers.not(Matchers.containsString("800101"))));
     }
 
     @Test
-    void requiresTestDataAcknowledgementBeforeSubmittingPublicKeyInForm() throws Exception {
+    void requiresUpdatedAcknowledgementBeforeSubmittingPaymentTest() throws Exception {
         stubConfiguration();
 
         mockMvc.perform(post("/payments/nicepay/keyin/approve")
-                        .param("orderId", "ORD-NP-2026-1001")
-                        .param("amountMinor", "10000")
-                        .param("goodsName", "Monthly plan renewal")
-                        .param("buyerName", "Alex Kim")
-                        .param("buyerEmail", "buyer@example.com")
-                        .param("buyerTel", "01012345678")
-                        .param("cardNumber", "4111111111111111")
-                        .param("cardExpireYyMm", "2512")
-                        .param("buyerAuthNumber", "800101")
-                        .param("cardPasswordTwoDigits", "12")
-                        .param("cardInterest", "0")
-                        .param("cardQuota", "00"))
-                .andExpect(status().isOk())
-                .andExpect(content().string(Matchers.containsString("Confirm that you are using provider test credentials and test card data only.")))
-                .andExpect(content().string(Matchers.not(Matchers.containsString("4111111111111111"))));
+                .param("orderId", "ORD-NP-2026-1001")
+                .param("amountMinor", "10000")
+                .param("goodsName", "Monthly plan renewal")
+                .param("buyerName", "Alex Kim")
+                .param("buyerEmail", "buyer@example.com")
+                .param("buyerTel", "01012345678")
+                .param("cardNumber", "4111111111111111")
+                .param("cardExpireYyMm", "2512")
+                .param("buyerAuthNumber", "800101")
+                .param("cardPasswordTwoDigits", "12")
+                .param("cardInterest", "0")
+                .param("cardQuota", "00"))
+            .andExpect(status().isOk())
+            .andExpect(content().string(Matchers.containsString("You must confirm that you are authorized to use the submitted card and personal information and that you accept responsibility for this NicePay payment test.")))
+            .andExpect(content().string(Matchers.not(Matchers.containsString("4111111111111111"))));
     }
 
     private void stubConfiguration() {
@@ -169,8 +169,8 @@ class NicePayWebControllerTest {
         featureFlags.setNicepayEnabled(true);
         PayBridgeProperties.ProviderProperties providerProperties = new PayBridgeProperties.ProviderProperties();
         providerProperties.getNicepay().setEnabled(true);
-        providerProperties.getNicepay().setMerchantId("nictest04m");
-        providerProperties.getNicepay().setMerchantKey("test-merchant-key");
+        providerProperties.getNicepay().setMerchantId("test-mid-configured");
+        providerProperties.getNicepay().setMerchantKey("test-merchant-key-configured");
         given(payBridgeProperties.getFeatures()).willReturn(featureFlags);
         given(payBridgeProperties.getProviders()).willReturn(providerProperties);
     }
