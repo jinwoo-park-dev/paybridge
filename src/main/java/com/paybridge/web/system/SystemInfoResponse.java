@@ -10,7 +10,7 @@ public record SystemInfoResponse(
     String service,
     @Schema(example = "PayBridge")
     String project,
-    @Schema(example = "0.1.0")
+    @Schema(example = "1.0.0")
     String releaseVersion,
     @Schema(example = "Public portfolio demo for test payment flows")
     String demoType,

@@ -1,39 +1,54 @@
 openapi: 3.1.0
 info:
-  title: PayBridge Public JSON API
-  version: 0.1.0
+  title: PayBridge JSON API
+  version: 1.0.0
+  summary: Static API reference for the PayBridge portfolio project.
   description: |
-    Checked-in reference for the JSON APIs in PayBridge.
+    Version-controlled OpenAPI reference for PayBridge JSON endpoints.
 
-    This file intentionally focuses on JSON endpoints that are useful during
-    code review and local verification:
-    - system metadata
-    - operator transaction and activity APIs
+    This contract intentionally documents JSON interfaces that are useful during code review, local verification, and interview discussion:
+    - public system metadata
+    - operator transaction search, detail, export, audit, outbox, and webhook inspection APIs
     - Stripe webhook intake
 
-    Server-rendered HTML routes under `/`, `/checkout`, `/operator/*`,
-    and `/payments/*` are intentionally excluded.
+    Server-rendered HTML routes under `/`, `/checkout`, `/operator/*`, and `/payments/*` are intentionally excluded because those are UI surfaces, not JSON API contracts.
+
+    The public production-style demo disables runtime Swagger UI and runtime OpenAPI endpoints. This checked-in contract is the stable API reference exposed through GitHub Pages.
+  contact:
+    name: PayBridge
+    url: https://github.com/jinwoo-park-dev/paybridge
+  license:
+    name: MIT
+    url: https://github.com/jinwoo-park-dev/paybridge/blob/main/LICENSE.txt
+externalDocs:
+  description: PayBridge source repository
+  url: https://github.com/jinwoo-park-dev/paybridge
 servers:
   - url: http://localhost:8080
+    description: Local development server. The public demo may keep operator JSON APIs disabled by default.
 tags:
   - name: System
-    description: Runtime metadata and small environment-verification endpoints.
+    description: Public metadata endpoint for smoke checks and demo inspection.
   - name: Operator Transactions
-    description: Read-only transaction search, detail, and export endpoints for operator tooling.
+    description: Read-only transaction search, detail, and machine-readable export endpoints for operator tooling.
   - name: Operator Activity
     description: Read-only audit, outbox, and Stripe webhook inspection endpoints.
   - name: Stripe Webhooks
-    description: Verified Stripe webhook intake with duplicate suppression.
+    description: Stripe webhook intake with signature verification, duplicate suppression, audit logging, and outbox side effects.
 paths:
   /api/system/info:
     get:
       tags:
         - System
-      summary: Get service metadata
+      summary: Get public service metadata
       operationId: getSystemInfo
+      description: Returns minimal public metadata for smoke checks without exposing runtime profiles or internal deployment details.
       responses:
         '200':
-          description: Service metadata returned successfully.
+          description: Public service metadata returned.
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
           content:
             application/json:
               schema:
@@ -45,24 +60,28 @@ paths:
         - Operator Transactions
       summary: Search transactions
       operationId: searchTransactions
+      description: Searches PayBridge transaction summaries by order id, provider identifiers, provider, and payment status.
       security:
-        - basicAuth: []
+        - operatorBasicAuth: []
       parameters:
         - in: query
           name: orderId
           description: Case-insensitive partial match against the internal order id.
           schema:
             type: string
+          example: ORD-STR-2026
         - in: query
           name: providerPaymentId
           description: Case-insensitive partial match against the provider payment id.
           schema:
             type: string
+          example: pi_3Qexample123
         - in: query
           name: providerTransactionId
           description: Case-insensitive partial match against the provider transaction id.
           schema:
             type: string
+          example: ch_3Qexample123
         - in: query
           name: provider
           description: Filter by payment provider.
@@ -75,7 +94,10 @@ paths:
             $ref: '#/components/schemas/PaymentStatus'
       responses:
         '200':
-          description: Matching transactions returned.
+          description: Matching transaction summaries returned.
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
           content:
             application/json:
               schema:
@@ -83,11 +105,77 @@ paths:
                 items:
                   $ref: '#/components/schemas/TransactionSummaryView'
         '401':
-          description: Operator authentication required.
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/ForbiddenOrDisabled'
+
+  /api/ops/transactions/export:
+    get:
+      tags:
+        - Operator Transactions
+      summary: Export machine-readable transaction snapshots
+      operationId: exportTransactions
+      description: Returns paged transaction snapshots with raw minor-unit amounts and timestamps suitable for reconciliation tooling and reviewer inspection.
+      security:
+        - operatorBasicAuth: []
+      parameters:
+        - in: query
+          name: approvedFrom
+          description: Inclusive lower bound for approvedAt in ISO-8601 UTC format.
+          schema:
+            type: string
+            format: date-time
+          example: '2026-04-01T00:00:00Z'
+        - in: query
+          name: approvedTo
+          description: Exclusive upper bound for approvedAt in ISO-8601 UTC format.
+          schema:
+            type: string
+            format: date-time
+          example: '2026-05-01T00:00:00Z'
+        - in: query
+          name: provider
+          description: Filter by payment provider.
+          schema:
+            $ref: '#/components/schemas/PaymentProvider'
+        - in: query
+          name: status
+          description: Filter by payment status.
+          schema:
+            $ref: '#/components/schemas/PaymentStatus'
+        - in: query
+          name: page
+          description: Zero-based page number. Defaults to 0.
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          example: 0
+        - in: query
+          name: size
+          description: Page size. Defaults to 200 and is capped at 500.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 200
+          example: 200
+      responses:
+        '200':
+          description: Paged transaction export returned.
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+                $ref: '#/components/schemas/TransactionExportPageView'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/ForbiddenOrDisabled'
 
   /api/ops/transactions/{paymentId}:
     get:
@@ -95,29 +183,27 @@ paths:
         - Operator Transactions
       summary: Get a transaction detail
       operationId: getTransactionDetail
+      description: Returns one payment lifecycle view, including provider identifiers, reversible balance labels, and reversal history.
       security:
-        - basicAuth: []
+        - operatorBasicAuth: []
       parameters:
         - $ref: '#/components/parameters/PaymentId'
       responses:
         '200':
           description: Transaction detail returned.
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/PaymentDetailView'
         '401':
-          description: Operator authentication required.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/ForbiddenOrDisabled'
         '404':
-          description: The payment id was not found.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+          $ref: '#/components/responses/NotFound'
 
   /api/ops/transactions/{paymentId}/audit-logs:
     get:
@@ -125,13 +211,17 @@ paths:
         - Operator Activity
       summary: Get audit log entries for a payment
       operationId: getAuditLogsForPayment
+      description: Returns audit records associated with a PayBridge payment id.
       security:
-        - basicAuth: []
+        - operatorBasicAuth: []
       parameters:
         - $ref: '#/components/parameters/PaymentId'
       responses:
         '200':
           description: Audit log entries returned.
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
           content:
             application/json:
               schema:
@@ -139,11 +229,9 @@ paths:
                 items:
                   $ref: '#/components/schemas/AuditLogView'
         '401':
-          description: Operator authentication required.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/ForbiddenOrDisabled'
 
   /api/ops/transactions/{paymentId}/outbox-events:
     get:
@@ -151,13 +239,17 @@ paths:
         - Operator Activity
       summary: Get outbox events for a payment
       operationId: getOutboxEventsForPayment
+      description: Returns transactional outbox events associated with a PayBridge payment id.
       security:
-        - basicAuth: []
+        - operatorBasicAuth: []
       parameters:
         - $ref: '#/components/parameters/PaymentId'
       responses:
         '200':
           description: Outbox events returned.
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
           content:
             application/json:
               schema:
@@ -165,11 +257,9 @@ paths:
                 items:
                   $ref: '#/components/schemas/OutboxEventView'
         '401':
-          description: Operator authentication required.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/ForbiddenOrDisabled'
 
   /api/ops/stripe-webhooks:
     get:
@@ -177,11 +267,15 @@ paths:
         - Operator Activity
       summary: Get recent Stripe webhook events
       operationId: getRecentStripeWebhookEvents
+      description: Returns recent Stripe webhook intake records for operator inspection.
       security:
-        - basicAuth: []
+        - operatorBasicAuth: []
       responses:
         '200':
-          description: Recent webhook events returned.
+          description: Recent Stripe webhook events returned.
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
           content:
             application/json:
               schema:
@@ -189,11 +283,9 @@ paths:
                 items:
                   $ref: '#/components/schemas/StripeWebhookEventView'
         '401':
-          description: Operator authentication required.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/ForbiddenOrDisabled'
 
   /api/providers/stripe/webhooks:
     post:
@@ -202,8 +294,9 @@ paths:
       summary: Receive a Stripe webhook event
       operationId: handleStripeWebhook
       description: |
-        Verifies the Stripe signature, suppresses duplicates, records audit and
-        outbox state, and returns a compact acknowledgement payload.
+        Verifies the Stripe signature, suppresses duplicate deliveries, records audit/outbox state, and returns a compact acknowledgement payload.
+
+        This endpoint is documented for architecture review and provider-integration discussion. It is not intended for manual reviewer calls from GitHub Pages.
       parameters:
         - in: header
           name: Stripe-Signature
@@ -211,6 +304,7 @@ paths:
           description: Stripe-generated signature header.
           schema:
             type: string
+          example: t=1713890000,v1=example_signature
       requestBody:
         required: true
         description: Raw Stripe event payload forwarded as JSON.
@@ -231,18 +325,20 @@ paths:
       responses:
         '200':
           description: Webhook accepted and either processed or marked duplicate.
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/StripeWebhookAcknowledgementResponse'
         '400':
-          description: Payload validation or Stripe signature verification failed.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+          $ref: '#/components/responses/BadRequest'
         '503':
           description: Stripe webhook handling is not configured for the current environment.
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
           content:
             application/json:
               schema:
@@ -250,9 +346,17 @@ paths:
 
 components:
   securitySchemes:
-    basicAuth:
+    operatorBasicAuth:
       type: http
       scheme: basic
+      description: Operator credentials configured through PayBridge runtime configuration.
+
+  headers:
+    CorrelationId:
+      description: Correlation id generated by PayBridge or propagated from the request `X-Correlation-Id` header.
+      schema:
+        type: string
+      example: 8b96b8f4-1dd4-4cbc-9ca8-c0aef7b23d5f
 
   parameters:
     PaymentId:
@@ -263,50 +367,94 @@ components:
       schema:
         type: string
         format: uuid
+      example: 123e4567-e89b-12d3-a456-426614174000
+
+  responses:
+    BadRequest:
+      description: Request validation failed or the provider payload/signature could not be accepted.
+      headers:
+        X-Correlation-Id:
+          $ref: '#/components/headers/CorrelationId'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+    Unauthorized:
+      description: Operator authentication is required.
+      headers:
+        X-Correlation-Id:
+          $ref: '#/components/headers/CorrelationId'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+    ForbiddenOrDisabled:
+      description: The authenticated user is not allowed to access the endpoint, or the operator JSON API is disabled in the active profile.
+      headers:
+        X-Correlation-Id:
+          $ref: '#/components/headers/CorrelationId'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+    NotFound:
+      description: The requested payment resource was not found.
+      headers:
+        X-Correlation-Id:
+          $ref: '#/components/headers/CorrelationId'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
 
   schemas:
     SystemInfoResponse:
       type: object
+      additionalProperties: false
       required:
         - service
         - project
         - releaseVersion
-        - frontendChoice
-        - architectureStyle
-        - unifiedCheckoutEnabled
-        - operatorApiEnabled
-        - activeProfiles
+        - demoType
+        - publicSurfaces
+        - protectedSurfaces
       properties:
         service:
           type: string
           example: paybridge
         project:
           type: string
-          example: PayBridge — Payment Orchestration Service
+          example: PayBridge
         releaseVersion:
           type: string
-          example: 0.1.0
-        frontendChoice:
+          example: 1.0.0
+        demoType:
           type: string
-          example: Spring MVC + server-rendered pages + minimal JS
-        architectureStyle:
-          type: string
-          example: Modular Monolith
-        unifiedCheckoutEnabled:
-          type: boolean
-          example: true
-        operatorApiEnabled:
-          type: boolean
-          example: true
-        activeProfiles:
+          example: Public portfolio demo for test payment flows
+        publicSurfaces:
           type: array
           items:
             type: string
           example:
-            - local
+            - Home page
+            - Checkout selection
+            - Stripe test checkout
+            - NicePay test payment form
+            - Public payment result pages
+            - Health check
+        protectedSurfaces:
+          type: array
+          items:
+            type: string
+          example:
+            - Transaction search
+            - Payment detail
+            - Refund and cancellation actions
+            - Audit, outbox, webhook, and export APIs
 
     TransactionSummaryView:
       type: object
+      additionalProperties: false
       required:
         - paymentId
         - orderId
@@ -321,6 +469,7 @@ components:
         paymentId:
           type: string
           format: uuid
+          example: 123e4567-e89b-12d3-a456-426614174000
         orderId:
           type: string
           example: ORD-STR-2026-1001
@@ -335,17 +484,111 @@ components:
           type: string
           example: USD 19.99
         providerPaymentId:
-          type: string
+          type:
+            - string
+            - 'null'
           example: pi_3Qexample123
         providerTransactionId:
-          type: string
+          type:
+            - string
+            - 'null'
           example: ch_3Qexample123
         approvedAtDisplay:
+          type:
+            - string
+            - 'null'
+          example: 2026-04-21 07:40:00 UTC
+
+    TransactionExportPageView:
+      type: object
+      additionalProperties: false
+      required:
+        - content
+        - page
+        - size
+        - hasNext
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/TransactionExportView'
+        page:
+          type: integer
+          example: 0
+        size:
+          type: integer
+          example: 200
+        hasNext:
+          type: boolean
+          example: false
+
+    TransactionExportView:
+      type: object
+      additionalProperties: false
+      required:
+        - paymentId
+        - orderId
+        - provider
+        - status
+        - amountMinor
+        - reversibleAmountMinor
+        - currency
+        - providerPaymentId
+        - providerTransactionId
+        - approvedAt
+        - createdAt
+        - updatedAt
+      properties:
+        paymentId:
           type: string
-          example: 2026-03-19 22:20:00 UTC
+          format: uuid
+          example: 123e4567-e89b-12d3-a456-426614174000
+        orderId:
+          type: string
+          example: ORD-STR-2026-1001
+        provider:
+          $ref: '#/components/schemas/PaymentProvider'
+        status:
+          $ref: '#/components/schemas/PaymentStatus'
+        amountMinor:
+          type: integer
+          format: int64
+          example: 1999
+        reversibleAmountMinor:
+          type: integer
+          format: int64
+          example: 1999
+        currency:
+          type: string
+          example: USD
+        providerPaymentId:
+          type:
+            - string
+            - 'null'
+          example: pi_3Qexample123
+        providerTransactionId:
+          type:
+            - string
+            - 'null'
+          example: ch_3Qexample123
+        approvedAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
+          example: '2026-04-21T07:40:00Z'
+        createdAt:
+          type: string
+          format: date-time
+          example: '2026-04-21T07:39:58Z'
+        updatedAt:
+          type: string
+          format: date-time
+          example: '2026-04-21T07:40:00Z'
 
     PaymentDetailView:
       type: object
+      additionalProperties: false
       required:
         - paymentId
         - orderId
@@ -364,6 +607,7 @@ components:
         paymentId:
           type: string
           format: uuid
+          example: 123e4567-e89b-12d3-a456-426614174000
         orderId:
           type: string
           example: ORD-STR-2026-1001
@@ -381,14 +625,20 @@ components:
           type: string
           example: USD
         providerPaymentId:
-          type: string
+          type:
+            - string
+            - 'null'
           example: pi_3Qexample123
         providerTransactionId:
-          type: string
+          type:
+            - string
+            - 'null'
           example: ch_3Qexample123
         approvedAtDisplay:
-          type: string
-          example: 2026-03-19 22:20:00 UTC
+          type:
+            - string
+            - 'null'
+          example: 2026-04-21 07:40:00 UTC
         fullReversalAllowed:
           type: boolean
           example: true
@@ -402,10 +652,11 @@ components:
 
     PaymentReversalView:
       type: object
+      additionalProperties: false
       required:
         - reversalId
         - reversalType
-        - reversalStatus
+        - status
         - amountDisplay
         - remainingAmountDisplay
         - reason
@@ -415,9 +666,10 @@ components:
         reversalId:
           type: string
           format: uuid
+          example: 7f8132ba-7e1e-4662-b23f-92447d44d383
         reversalType:
           $ref: '#/components/schemas/ReversalType'
-        reversalStatus:
+        status:
           $ref: '#/components/schemas/ReversalStatus'
         amountDisplay:
           type: string
@@ -426,23 +678,33 @@ components:
           type: string
           example: USD 10.00
         reason:
-          type: string
+          type:
+            - string
+            - 'null'
           example: Customer requested a partial refund.
         providerReversalId:
-          type: string
+          type:
+            - string
+            - 'null'
           example: re_3Qexample123
         processedAtDisplay:
-          type: string
-          example: 2026-03-19 22:25:00 UTC
+          type:
+            - string
+            - 'null'
+          example: 2026-04-21 07:45:00 UTC
 
     AuditLogView:
       type: object
+      additionalProperties: false
       required:
         - id
         - action
         - outcome
         - resourceType
+        - resourceId
+        - provider
         - actorType
+        - correlationId
         - message
         - detailJson
         - occurredAt
@@ -450,6 +712,7 @@ components:
         id:
           type: string
           format: uuid
+          example: 9c78ef2e-82c9-4638-a4d1-4f410b2e9226
         action:
           $ref: '#/components/schemas/AuditAction'
         outcome:
@@ -478,14 +741,18 @@ components:
           type: string
           example: Payment approval recorded.
         detailJson:
-          type: string
+          type:
+            - string
+            - 'null'
           example: '{"orderId":"ORD-STR-2026-1001","amountMinor":1999}'
         occurredAt:
           type: string
           format: date-time
+          example: '2026-04-21T07:40:00Z'
 
     OutboxEventView:
       type: object
+      additionalProperties: false
       required:
         - id
         - aggregateType
@@ -494,12 +761,15 @@ components:
         - status
         - retryCount
         - availableAt
+        - publishedAt
+        - lastError
         - payloadJson
         - createdAt
       properties:
         id:
           type: string
           format: uuid
+          example: 2c6c5f9c-7f47-4f13-94fa-06722fe3a0ae
         aggregateType:
           type: string
           example: payment
@@ -516,24 +786,29 @@ components:
         availableAt:
           type: string
           format: date-time
+          example: '2026-04-21T07:40:00Z'
         publishedAt:
           type:
             - string
             - 'null'
           format: date-time
+          example: null
         lastError:
           type:
             - string
             - 'null'
+          example: null
         payloadJson:
           type: string
           example: '{"paymentId":"123e4567-e89b-12d3-a456-426614174000","provider":"STRIPE"}'
         createdAt:
           type: string
           format: date-time
+          example: '2026-04-21T07:40:00Z'
 
     StripeWebhookEventView:
       type: object
+      additionalProperties: false
       required:
         - id
         - provider
@@ -541,11 +816,15 @@ components:
         - eventType
         - signatureVerified
         - processingStatus
+        - correlationId
+        - lastError
+        - processedAt
         - createdAt
       properties:
         id:
           type: string
           format: uuid
+          example: 941f226b-e515-4ddb-a950-fc12aef9b962
         provider:
           $ref: '#/components/schemas/PaymentProvider'
         providerEventId:
@@ -568,17 +847,21 @@ components:
           type:
             - string
             - 'null'
+          example: null
         processedAt:
           type:
             - string
             - 'null'
           format: date-time
+          example: '2026-04-21T07:40:01Z'
         createdAt:
           type: string
           format: date-time
+          example: '2026-04-21T07:40:00Z'
 
     StripeWebhookAcknowledgementResponse:
       type: object
+      additionalProperties: false
       required:
         - received
         - duplicate
@@ -604,6 +887,7 @@ components:
 
     ApiErrorResponse:
       type: object
+      additionalProperties: false
       required:
         - timestamp
         - status
@@ -617,6 +901,7 @@ components:
         timestamp:
           type: string
           format: date-time
+          example: '2026-04-21T07:40:00Z'
         status:
           type: integer
           example: 400
@@ -641,21 +926,23 @@ components:
 
     ApiFieldViolation:
       type: object
+      additionalProperties: false
       required:
         - field
         - message
+        - rejectedValue
       properties:
         field:
           type: string
           example: amountMinor
         message:
           type: string
-          example: Amount (minor units) must be positive.
+          example: Amount minor units must be positive.
         rejectedValue:
           type:
             - string
             - 'null'
-          example: "-1"
+          example: '-1'
 
     ErrorCode:
       type: string

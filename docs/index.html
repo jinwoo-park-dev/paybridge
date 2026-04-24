@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PayBridge Project Docs</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #0f172a;
+      --panel: #111827;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --link: #93c5fd;
+      --border: #334155;
+      --accent: #38bdf8;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top left, #1e3a8a 0, var(--bg) 42%);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    main {
+      width: min(960px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 72px 0;
+    }
+
+    .eyebrow {
+      color: var(--accent);
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 12px 0 16px;
+      font-size: clamp(2.25rem, 6vw, 4.5rem);
+      line-height: 1;
+    }
+
+    .lead {
+      max-width: 760px;
+      margin: 0 0 32px;
+      color: var(--muted);
+      font-size: 1.1rem;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      display: block;
+      min-height: 180px;
+      padding: 24px;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: color-mix(in srgb, var(--panel) 86%, transparent);
+      color: inherit;
+      text-decoration: none;
+      box-shadow: 0 18px 60px rgba(0, 0, 0, 0.25);
+    }
+
+    .card:hover,
+    .card:focus-visible {
+      border-color: var(--accent);
+      outline: none;
+    }
+
+    .card strong {
+      display: block;
+      margin-bottom: 10px;
+      font-size: 1.2rem;
+    }
+
+    .card span {
+      color: var(--muted);
+    }
+
+    .note {
+      margin-top: 28px;
+      padding: 18px 20px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      color: var(--muted);
+      background: rgba(15, 23, 42, 0.72);
+    }
+
+    a {
+      color: var(--link);
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="eyebrow">PayBridge static documentation</div>
+    <h1>Project Docs</h1>
+    <p class="lead">
+      Version-controlled documentation for the PayBridge portfolio project. The public EC2 demo intentionally keeps runtime Swagger UI disabled, while this GitHub Pages site exposes the API reference for recruiter and interviewer review.
+    </p>
+
+    <section class="cards" aria-label="Documentation links">
+      <a class="card" href="../../Users/admin/Desktop/Hiring%20Process/2_Projects/paybridge/260423_paybridge_static_api_docs_files/docs/api">
+        <strong>API Reference</strong>
+        <span>Read-only Swagger UI generated from the checked-in OpenAPI contract.</span>
+      </a>
+      <a class="card" href="./openapi/paybridge-public.yaml">
+        <strong>OpenAPI YAML</strong>
+        <span>Source contract for PayBridge JSON endpoints.</span>
+      </a>
+      <a class="card" href="https://github.com/jinwoo-park-dev/paybridge/tree/main/docs/adr">
+        <strong>Architecture Decisions</strong>
+        <span>ADR files for provider boundaries, outbox tradeoffs, and server-rendered operator UI.</span>
+      </a>
+      <a class="card" href="https://github.com/jinwoo-park-dev/paybridge">
+        <strong>Source Repository</strong>
+        <span>GitHub repository with the Spring Boot service, tests, and deployment scripts.</span>
+      </a>
+    </section>
+
+    <p class="note">
+      The API reference is intentionally read-only. Operator APIs remain protected by authentication in runtime environments and can be disabled in the production profile.
+    </p>
+  </main>
+</body>
+</html>

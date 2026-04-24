@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/system")
 public class SystemInfoController {
 
-    private static final String RELEASE_VERSION = "0.1.0";
+    private static final String RELEASE_VERSION = "1.0.0";
 
     private final PayBridgeProperties payBridgeProperties;
 
