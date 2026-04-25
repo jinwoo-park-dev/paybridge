@@ -92,7 +92,6 @@ That combination makes the project useful for two kinds of roles:
 
 ---
 ## System overview
-
 <p align="center">
   <img src="docs/assets/paybridge-architecture.png" alt="PayBridge architecture overview diagram" width="900" />
 </p>
@@ -369,6 +368,7 @@ GitHub Actions runs the Gradle test suite on push and pull request.
 ## Additional docs
 
 - [ADR-001 — modular monolith and provider boundaries](docs/adr/ADR-001-modular-monolith-and-provider-boundaries.md)
-- [ADR-002 — outbox-first eventing](docs/adr/ADR-002-outbox-first-over-broker.md)
-- [ADR-003 — server-rendered operator UI](docs/adr/ADR-003-server-rendered-operator-ui.md)
+- [ADR-002 — outbox first eventing](docs/adr/ADR-002-outbox-first-over-broker.md)
+- [ADR-003 — server rendered operator UI](docs/adr/ADR-003-server-rendered-operator-ui.md)
+- [ADR-004 — single EC2 docker compose public demo](docs/adr/ADR-004-single-ec2-docker-compose-public-demo.md)
 - [Checked in OpenAPI spec](docs/openapi/paybridge-public.yaml)
