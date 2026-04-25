@@ -6,25 +6,24 @@ PayBridge is a payment orchestration backend in Java 21 and Spring Boot that kee
 
 The project contrasts two very different payment paths:
 
-- **Stripe**: PaymentIntents, browser confirmation, return page verification, refunds, and webhooks
-- **NicePay**: merchant hosted keyed entry approval, EUC KR form posting, provider signing, approval recording, and cancellation APIs
+- **Stripe**: PaymentIntents, Payment Element confirmation, return page verification, refunds, and webhooks
+- **NicePay**: a merchant hosted keyed entry card flow, EUC-KR form posting, provider specific signing, approval recording, and cancellation APIs
 
-The core question behind the project is not "how do I call two payment SDKs?" It is "how do I keep approval, reversal, and transaction visibility consistent when provider behavior is not symmetric?"
+The point of the project is not “How do I call two payment SDKs?” It is “How do I keep approval, reversal, and transaction visibility consistent when provider behavior is not symmetric?”
 
 ---
 ## Table of Contents
 - [Demo walkthrough](#demo-walkthrough)
 - [Why I built this](#why-i-built-this)
 - [What this project demonstrates](#what-this-project-demonstrates)
-- [Tech stack](#tech-stack)
+- [Tech Stack](#tech-stack)
 - [System overview](#system-overview)
 - [Why Stripe and NicePay together matter](#why-stripe-and-nicepay-together-matter)
 - [Main flows](#main-flows)
 - [Repository map](#repository-map)
 - [Local run](#local-run)
-- [Deployment](#deployment)
-- [Delivery workflow](#delivery-workflow)
 - [Routes](#routes)
+- [Deployment and delivery](#deployment-and-delivery)
 - [Interface snapshots](#interface-snapshots)
 - [Manual smoke test](#manual-smoke-test)
 - [Reliability and security highlights](#reliability-and-security-highlights)
@@ -32,6 +31,7 @@ The core question behind the project is not "how do I call two payment SDKs?" It
 - [Additional docs](#additional-docs)
 
 ---
+
 ## Demo walkthrough
 
 <p align="center">
@@ -45,12 +45,12 @@ The core question behind the project is not "how do I call two payment SDKs?" It
 ---
 ## Why I built this
 
-I built PayBridge to show how I think about real payment system problems as a backend engineer. The project is informed by earlier work around keyed entry card payments and by wanting a portfolio project that contrasts that model with Stripe’s PaymentIntent plus webhook approach.
+I built PayBridge to show how I think about real payment system problems as a backend engineer. The project is informed by early career work around keyed entry card payments and by wanting a project that contrasts that model with Stripe’s PaymentIntent plus webhook approach.
 
 That combination makes the project useful for two kinds of roles:
 
-- **Payment and fintech backend roles** because it deals with provider heterogeneity, reversal semantics, idempotency, webhook retries, auditability, and operational traceability
-- **General backend and SWE roles** because it shows modular design, transactional consistency, local developer experience, testing, and API plus UI integration in one repository
+- **Payment / fintech backend roles**: because it deals with provider heterogeneity, reversal semantics, idempotency, webhook retries, auditability, and operational traceability
+- **General backend / SWE roles**: because it shows modular design, transactional consistency, clear boundaries, local developer experience, testing, and API/UI integration in one repository
 
 ---
 ## What this project demonstrates
@@ -59,9 +59,9 @@ That combination makes the project useful for two kinds of roles:
 
 - A **shared payment and reversal model** across providers with very different approval and reversal contracts
 - **Idempotent write paths** for approvals and reversals
-- **Duplicate safe Stripe webhook handling** through signature verification and event deduplication
-- Clear **provider boundaries** so Stripe and NicePay differences stay inside provider modules and transport code instead of leaking into the shared payment model
-- Practical handling of **partial reversals**, **provider identifiers**, and **operator transaction inspection**
+- **Duplicate safe Stripe webhook handling** using signature verification plus provider scoped uniqueness
+- An explicit **provider boundary** so Stripe and NicePay differences stay inside provider modules and transport/client code instead of leaking into the shared payment model
+- Practical handling of **partial reversals**, **provider identifiers**, and **operator facing transaction inspection**
 
 ### For general backend roles
 
@@ -70,25 +70,25 @@ That combination makes the project useful for two kinds of roles:
 - Server rendered pages for manual workflows plus a **read only operator API** that can be enabled for review tooling
 - Public provider test pages that end in **limited result pages**, while transaction detail and money moving actions stay behind operator authentication
 - Clear **configuration, feature flags, security defaults, and local run paths**
-- Shared support for **validation, error handling, logging, metrics, masking, and correlation IDs**
-- Coverage across **unit, MVC, controller, and PostgreSQL Testcontainers integration tests**
+- Shared **cross cutting support** for validation, error handling, logging, metrics, masking, and correlation IDs
+- Coverage across **unit, MVC/controller, and PostgreSQL/Testcontainers integration tests**
 
 ---
-## Tech stack
+## Tech Stack
 
 | Category | Choice |
 | --- | --- |
-| Language and runtime | Java 21 |
+| Language / runtime | Java 21 |
 | Framework | Spring Boot 3.5.12 |
-| Architecture style | Payment orchestration backend with clear module boundaries |
-| UI | Spring MVC, Thymeleaf, minimal JavaScript |
+| Architecture style | Modular monolith |
+| UI | Spring MVC + Thymeleaf + minimal JavaScript |
 | Database | PostgreSQL 16 |
 | Schema management | Flyway |
 | Payment providers | Stripe, NicePay |
-| Reliability controls | Idempotency records, webhook dedupe, audit logs, outbox rows |
-| Shared support | Spring Security, validation, error handling, masked logging, correlation IDs, Micrometer, Prometheus, OpenAPI |
+| Reliability controls | Idempotency keys, webhook dedupe, audit logs, outbox rows |
+| Cross-cutting support | Spring Security, validation, error handling, masked logging, correlation IDs, Micrometer + Prometheus, OpenAPI |
 | Testing | JUnit 5, Spring test slices, Testcontainers |
-| CI | GitHub Actions |
+| CI and delivery | GitHub Actions, Amazon ECR, SSM Run Command |
 
 ---
 ## System overview
@@ -106,11 +106,11 @@ That combination makes the project useful for two kinds of roles:
 
 | Concern | Stripe | NicePay | Shared outcome in PayBridge |
 | --- | --- | --- | --- |
-| Approval path | PaymentIntent plus browser confirmation | Merchant hosted keyed entry approval request | One approved `Payment` record |
+| Approval path | PaymentIntent + browser confirmation | Merchant-hosted keyed-entry approval request | One approved `Payment` record |
 | Reversal path | Refund API | Cancellation API | One `PaymentReversal` model |
-| Async behavior | Webhook follow up and retries | Mostly synchronous approval and cancellation response flow | Shared payment lifecycle visibility |
-| Provider specific concerns | Hosted fields, webhook signature verification, browser return flow | EUC KR posting, request signing, keyed entry card data, provider response signature verification | Differences stay in provider modules |
-| Operator needs | Search, inspect, refund, replay safety | Search, inspect, full cancellation, partial cancellation | Same transaction search and detail surface |
+| Async behavior | Webhook follow-up and retries | Mostly synchronous approval/cancel response flow | Shared payment lifecycle visibility |
+| Provider-specific concerns | Hosted fields, webhook signature verification, browser return flow | EUC-KR posting, request signing, keyed-entry card data, provider response signature verification | Differences stay in provider modules |
+| Operator needs | Search, inspect, refund, confirm replay safety | Search, inspect, full/partial cancellation | Same transaction search and detail surface |
 
 ---
 ## Main flows
@@ -154,7 +154,7 @@ That combination makes the project useful for two kinds of roles:
 - [`src/main/java/com/paybridge/operator`](src/main/java/com/paybridge/operator) — operator login and read only JSON API controllers
 - [`src/main/java/com/paybridge/payment`](src/main/java/com/paybridge/payment) — shared payment domain, commands, queries, persistence mapping, and operator payment search/detail views
 - [`src/main/java/com/paybridge/providers/stripe`](src/main/java/com/paybridge/providers/stripe) — Stripe checkout, confirmation, public result flow, refunds, webhook flow, and MVC pages
-- [`src/main/java/com/paybridge/providers/nicepay`](src/main/java/com/paybridge/providers/nicepay) — NicePay approval, public result flow, cancellation, crypto helpers, and EUC KR form handling
+- [`src/main/java/com/paybridge/providers/nicepay`](src/main/java/com/paybridge/providers/nicepay) — NicePay approval, public result flow, cancellation, crypto helpers, and EUC-KR form handling
 - [`src/main/java/com/paybridge/audit`](src/main/java/com/paybridge/audit) — audit persistence, write/query services, and API view models used by operator inspection endpoints
 - [`src/main/java/com/paybridge/ops/outbox`](src/main/java/com/paybridge/ops/outbox) — transactional outbox persistence, query services, and API view models used by operator inspection endpoints
 - [`src/main/java/com/paybridge/support`](src/main/java/com/paybridge/support) — security, configuration, validation, error handling, logging, metrics, and OpenAPI wiring
@@ -166,7 +166,7 @@ That combination makes the project useful for two kinds of roles:
 ---
 ## Local run
 
-### Fastest path: local JVM plus Dockerized Postgres
+### Fastest path: local JVM + Dockerized Postgres
 
 ```bash
 cp .env.example .env
@@ -207,108 +207,87 @@ cp .env.example .env
 See [`.env.example`](.env.example) and [`src/main/resources/application.yml`](src/main/resources/application.yml) for the full configuration surface.
 
 ---
-## Deployment
-
-### Runtime
-
-The checked in deployment path under [`deploy/single-ec2`](deploy/single-ec2) matches the current public demo shape.
-
-- **Cloudflare** sits in front of the origin for DNS, edge TLS, cache control, and rate limiting.
-- **One AWS Graviton EC2 host** runs the public demo runtime.
-- **Docker Compose** supervises Caddy, the PayBridge Spring Boot container, and PostgreSQL on the same host.
-- **Caddy** terminates origin HTTPS and reverse proxies traffic to the app container.
-- **PostgreSQL** runs on the same host because this deployment is intentionally scoped as a small public portfolio runtime.
-- **Amazon ECR** stores the container images used by the EC2 host.
-- **SSM Parameter Store** provides runtime configuration and secrets that are rendered into `.env.prod` on the host.
-- **Session Manager** is the preferred server access path, so the deployment does not depend on inbound SSH.
-
-
-### Deployment files
-
-| File | Role |
-| --- | --- |
-| `deploy/single-ec2/compose.prod.yml` | Production Compose stack for Caddy, PayBridge, and PostgreSQL |
-| `deploy/single-ec2/Caddyfile` | Origin HTTPS reverse proxy configuration |
-| `deploy/single-ec2/env.prod.example` | Reference file for required production environment variables |
-| `deploy/single-ec2/ssm-parameters.example.json` | Reference naming contract for SSM parameters |
-| `deploy/single-ec2/scripts/bootstrap-ec2.sh` | EC2 host bootstrap for Docker, AWS CLI, Python, and Docker Compose |
-| `deploy/single-ec2/scripts/render-env-from-ssm.sh` | Generates `.env.prod` from SSM Parameter Store |
-| `deploy/single-ec2/scripts/deploy.sh` | Pulls the selected image and starts the Compose stack |
-| `deploy/single-ec2/scripts/stop-stack.sh` | Stops the running Compose stack |
-| `deploy/single-ec2/scripts/backup-postgres.sh` | Creates a PostgreSQL backup from the running container |
-| `deploy/single-ec2/scripts/restore-postgres.sh` | Restores a PostgreSQL backup into the running container |
-
----
-## Delivery workflow
-
-### Continuous integration
-
-The repository keeps a standard GitHub Actions test workflow at [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
-
-That workflow runs on push and pull request and executes the Gradle test suite so core payment logic, MVC flows, provider utilities, and PostgreSQL Testcontainers integration paths are validated before release changes are promoted.
-
-### Release workflow
-
-The release workflow lives at [`.github/workflows/deploy-single-ec2.yml`](.github/workflows/deploy-single-ec2.yml) and is triggered through `workflow_dispatch`.
-
-Its current behavior is:
-
-1. Check out the repository.
-2. Set up Java 21.
-3. Run `./gradlew test` with provider network integrations disabled for the workflow run.
-4. Assume an AWS role through GitHub OIDC.
-5. Log in to Amazon ECR.
-6. Build a Linux ARM64 image for the Graviton EC2 target.
-7. Push the image to ECR.
-8. Use SSM Run Command to invoke the EC2 host side deploy script.
-9. Run a basic HTTPS smoke test against `/actuator/health` on the deployed domain.
-
-This release model keeps CI automatic and keeps deployment explicit. On a single host public runtime, that makes release timing easy to control while still proving a real test, build, push, remote deploy, and smoke test path.
-
-### Repository configuration required by the release workflow
-
-**Secret**
-
-- `AWS_ROLE_ARN`
-
-**Repository variables**
-
-- `AWS_REGION`
-- `ECR_REPOSITORY`
-- `EC2_INSTANCE_ID`
-- `SSM_PATH`
-- `DEPLOY_DIR`
-
-These values line up with the EC2 bootstrap and host side deployment scripts already checked into `deploy/single-ec2`.
-
----
 ## Routes
 
 | Route | Purpose | Auth |
 | --- | --- | --- |
 | `/` | Home / overview page | Public |
-| `/checkout` | Choose provider specific payment test flow | Public |
-| `/operator/login` | Operator sign in page | Public |
-| `/operator/logout` | Operator sign out endpoint | Authenticated operator session |
+| `/checkout` | Choose provider-specific payment test flow | Public |
+| `/operator/login` | Operator sign-in page | Public |
+| `/operator/logout` | Operator sign-out endpoint | Authenticated operator session |
 | `/payments/stripe/checkout` | Stripe checkout page | Public |
 | `/payments/stripe/payment-intent` | Create a Stripe PaymentIntent for the checkout page | Public |
 | `/payments/stripe/return` | Stripe browser return handler and public result renderer | Public |
 | `/payments/stripe/result` | Public Stripe result page for an existing PaymentIntent | Public |
-| `/payments/nicepay/keyin` | NicePay keyed entry payment test page | Public |
-| `/payments/nicepay/keyin/approve` | Submit the NicePay keyed entry payment test form | Public |
+| `/payments/nicepay/keyin` | NicePay keyed-entry payment test page | Public |
+| `/payments/nicepay/keyin/approve` | Submit the NicePay keyed-entry payment test form | Public |
 | `/payments/nicepay/result` | Public NicePay result page for a recorded approval | Public |
 | `/ops/transactions/search` | Transaction search | Operator |
-| `/payments/{paymentId}` | Payment detail and reversal actions | Operator |
-| `/api/ops/transactions` | Read only transaction search JSON API | Operator when `operator-api-enabled=true`; off by default in the production profile |
-| `/api/ops/transactions/export` | Machine readable transaction export JSON API with paging and approved at filters | Operator when `operator-api-enabled=true`; off by default in the production profile |
-| `/api/ops/transactions/{paymentId}` | Read only transaction detail JSON API | Operator when `operator-api-enabled=true`; off by default in the production profile |
-| `/api/ops/transactions/{paymentId}/audit-logs` | Audit log JSON API | Operator when `operator-api-enabled=true`; off by default in the production profile |
-| `/api/ops/transactions/{paymentId}/outbox-events` | Outbox JSON API | Operator when `operator-api-enabled=true`; off by default in the production profile |
-| `/api/ops/stripe-webhooks` | Recent Stripe webhook events | Operator when `operator-api-enabled=true`; off by default in the production profile |
+| `/payments/{paymentId}` | Payment detail + reversal actions | Operator |
+| `/api/ops/transactions` | Read-only transaction search JSON API | Operator when `operator-api-enabled=true`; disabled in prod by default |
+| `/api/ops/transactions/export` | Machine-readable transaction export JSON API with paging and approved-at filters | Operator when `operator-api-enabled=true`; disabled in prod by default |
+| `/api/ops/transactions/{paymentId}` | Read-only transaction detail JSON API | Operator when `operator-api-enabled=true`; disabled in prod by default |
+| `/api/ops/transactions/{paymentId}/audit-logs` | Audit log JSON API | Operator when `operator-api-enabled=true`; disabled in prod by default |
+| `/api/ops/transactions/{paymentId}/outbox-events` | Outbox JSON API | Operator when `operator-api-enabled=true`; disabled in prod by default |
+| `/api/ops/stripe-webhooks` | Recent Stripe webhook events | Operator when `operator-api-enabled=true`; disabled in prod by default |
 | `/api/system/info` | Runtime metadata JSON endpoint | Public |
-| `/swagger-ui/index.html` | Runtime OpenAPI UI | Public in local and dev; disabled in the production profile |
-| `/api-docs` | Runtime OpenAPI JSON | Public in local and dev; disabled in the production profile |
+| `/swagger-ui/index.html` | Runtime OpenAPI UI | Public in local/dev; disabled in prod profile |
+| `/api-docs` | Runtime OpenAPI JSON | Public in local/dev; disabled in prod profile |
 | `/actuator/prometheus` | Prometheus scrape endpoint | Authenticated |
+
+---
+## Deployment and delivery
+
+### Runtime shape
+
+- One AWS Graviton EC2 instance runs the demo runtime.
+- Docker Compose supervises Caddy, the PayBridge Spring Boot container, and PostgreSQL on the same host.
+- Caddy terminates HTTPS and reverse proxies traffic to the app container.
+- PostgreSQL stays on the same instance because this deployment is scoped for a compact public demo rather than a high availability payment platform.
+- Amazon ECR stores the container images pulled by the EC2 host.
+- SSM Parameter Store provides runtime configuration and secrets that are rendered into `.env.prod` on the host.
+- Session Manager is the preferred server access path, so the deployment does not require inbound SSH.
+- This design avoids ECS, ALB, RDS, NAT Gateway, and CloudFront so the project can stay online at a predictable monthly cost while still using a real release path.
+
+The deployment files live under `deploy/single-ec2`.
+
+| File | Role |
+| --- | --- |
+| `deploy/single-ec2/compose.prod.yml` | Production Compose stack for Caddy, PayBridge, and PostgreSQL |
+| `deploy/single-ec2/Caddyfile` | HTTPS reverse proxy configuration |
+| `deploy/single-ec2/env.prod.example` | Reference file for required production environment variables |
+| `deploy/single-ec2/ssm-parameters.example.json` | Reference naming contract for SSM parameters |
+| `deploy/single-ec2/scripts/bootstrap-ec2.sh` | EC2 host bootstrap for Docker, AWS CLI, Python, and Docker Compose |
+| `deploy/single-ec2/scripts/render-env-from-ssm.sh` | Generates `.env.prod` from SSM Parameter Store |
+| `deploy/single-ec2/scripts/backup-postgres-if-running.sh` | Creates a PostgreSQL backup before a release when a database container is already running |
+| `deploy/single-ec2/scripts/deploy.sh` | Pulls the selected image and starts the Compose stack |
+| `deploy/single-ec2/scripts/stop-stack.sh` | Stops the running Compose stack |
+| `deploy/single-ec2/scripts/backup-postgres.sh` | Creates a PostgreSQL backup from the running container |
+| `deploy/single-ec2/scripts/restore-postgres.sh` | Restores a PostgreSQL backup into the running container |
+
+### Public demo posture
+
+- Public users can open the home page, checkout page, Stripe checkout flow, Stripe result page, NicePay keyed entry test page, and NicePay result page.
+- Operator transaction detail, refunds, cancellations, audit reads, outbox reads, and JSON exports remain behind operator authentication.
+- The base prod profile keeps the operator JSON API behind a feature flag. The public demo deployment can enable it explicitly for authenticated review clients.
+- The NicePay public test route is intended only for provider issued test credentials and approved test card data.
+
+### CI and release workflow
+
+The repository keeps a standard GitHub Actions workflow for continuous integration.
+
+- `.github/workflows/ci.yml` runs the Gradle test suite on push and pull request.
+- The test run covers domain rules, MVC flows, provider utilities, security behavior, and PostgreSQL backed integration paths.
+
+The release workflow is test gated and can run automatically after changes reach `main`.
+
+- `.github/workflows/deploy-single-ec2.yml` runs on pushes to `main` and can also be started manually with `workflow_dispatch`.
+- The workflow runs the Gradle test suite before any image is published.
+- It assumes an AWS role through GitHub OIDC, logs in to ECR, builds a Linux ARM64 image for the Graviton EC2 target, and pushes the image to ECR.
+- Before deployment, it syncs the checked in `deploy/single-ec2` files from the current commit onto the EC2 host through SSM Run Command.
+- It creates a PostgreSQL backup when an existing database container is running, then invokes the host side Docker Compose deploy script.
+- It finishes with an HTTPS smoke test against `/actuator/health` on the deployed domain.
+
 
 ---
 ## Interface snapshots
@@ -364,7 +343,7 @@ The screenshots below are representative views of the checkout page and provider
 ---
 ## Reliability and security highlights
 
-- **Idempotency records** on approval and reversal write paths
+- **Idempotency keys** on approval and reversal write paths
 - **Webhook duplicate suppression** for Stripe events
 - **Transactional outbox rows** persisted with payment lifecycle changes
 - **Audit logs** for approvals, reversals, webhook receipt, duplicate detection, and failures
@@ -372,7 +351,7 @@ The screenshots below are representative views of the checkout page and provider
 - **Masked logging** for sensitive values and provider identifiers
 - **Operator only routes** for transaction search, payment detail, refunds, cancellations, and JSON exports
 - **Public provider result pages** that keep checkout confirmation separate from internal operator detail
-- **Feature flags** to disable providers cleanly and to keep the operator JSON API off by default in the production profile
+- **Feature flags** to disable providers cleanly and to keep the operator JSON API off by default in prod
 
 ---
 ## Testing
@@ -382,7 +361,7 @@ The project includes:
 - domain tests for payment and reversal rules
 - controller and form validation tests
 - provider utility tests for Stripe and NicePay helpers
-- PostgreSQL Testcontainers integration tests for persistence, operator pages, webhook flow, and security behavior
+- PostgreSQL/Testcontainers integration tests for persistence, operator pages, webhook flow, and security behavior
 
 GitHub Actions runs the Gradle test suite on push and pull request.
 
