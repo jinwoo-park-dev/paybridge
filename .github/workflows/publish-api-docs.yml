@@ -1,8 +1,8 @@
-name: publish-api-docs
+name: paybridge-api-docs-pages
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main ]
     paths:
       - 'docs/**'
       - '.github/workflows/publish-api-docs.yml'
