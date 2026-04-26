@@ -105,16 +105,16 @@
 </head>
 <body>
   <main>
-    <div class="eyebrow">PayBridge static documentation</div>
+    <div class="eyebrow">PayBridge docs</div>
     <h1>Project Docs</h1>
     <p class="lead">
-      Version-controlled documentation for the PayBridge portfolio project. The public EC2 demo intentionally keeps runtime Swagger UI disabled, while this GitHub Pages site exposes the API reference for recruiter and interviewer review.
+      PayBridge is a Java 21 and Spring Boot payment orchestration backend that keeps one shared payment and reversal lifecycle across Stripe and NicePay. The public EC2 demo keeps runtime Swagger UI disabled; this site publishes the JSON API reference from the repository.
     </p>
 
     <section class="cards" aria-label="Documentation links">
-      <a class="card" href="../../Users/admin/Desktop/Hiring%20Process/2_Projects/paybridge/260423_paybridge_static_api_docs_files/docs/api">
+      <a class="card" href="./api/">
         <strong>API Reference</strong>
-        <span>Read-only Swagger UI generated from the checked-in OpenAPI contract.</span>
+        <span>Swagger UI rendered from the OpenAPI contract in this repository. Try it out is disabled.</span>
       </a>
       <a class="card" href="./openapi/paybridge-public.yaml">
         <strong>OpenAPI YAML</strong>
@@ -122,16 +122,16 @@
       </a>
       <a class="card" href="https://github.com/jinwoo-park-dev/paybridge/tree/main/docs/adr">
         <strong>Architecture Decisions</strong>
-        <span>ADR files for provider boundaries, outbox tradeoffs, and server-rendered operator UI.</span>
+        <span>ADR files for provider boundaries, outbox tradeoffs, and server rendered operator UI.</span>
       </a>
       <a class="card" href="https://github.com/jinwoo-park-dev/paybridge">
         <strong>Source Repository</strong>
-        <span>GitHub repository with the Spring Boot service, tests, and deployment scripts.</span>
+        <span>Spring Boot service, tests, and deployment scripts.</span>
       </a>
     </section>
 
     <p class="note">
-      The API reference is intentionally read-only. Operator APIs remain protected by authentication in runtime environments and can be disabled in the production profile.
+      Operator APIs remain protected by authentication in runtime environments and can be disabled by feature flag.
     </p>
   </main>
 </body>
