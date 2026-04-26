@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Operator Transactions API", description = "Read-only transaction search, detail, and export endpoints for operator tooling.")
+@Tag(name = "Operator Transactions API", description = "Transaction search, detail, and export endpoints for operator tooling.")
 @RestController
 @RequestMapping("/api/ops/transactions")
 public class OperatorTransactionsApiController {
@@ -59,7 +59,7 @@ public class OperatorTransactionsApiController {
         );
     }
 
-    @Operation(summary = "Export machine-readable transaction snapshots")
+    @Operation(summary = "Export transaction snapshots")
     @GetMapping("/export")
     public TransactionExportPageView export(
             @Parameter(description = "Inclusive lower bound for approvedAt in ISO-8601 UTC format.")

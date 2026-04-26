@@ -38,7 +38,7 @@ public class SystemInfoController {
             "paybridge",
             payBridgeProperties.getApp().getDisplayName(),
             RELEASE_VERSION,
-            "Public portfolio demo for test payment flows",
+            "Public demo for test payment flows",
             List.of(
                 "Home page",
                 "Checkout selection",

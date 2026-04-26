@@ -1,6 +1,12 @@
 name: paybridge-single-ec2-deploy
 
 on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - 'docs/**'
+      - 'README.md'
+      - 'LICENSE.txt'
   workflow_dispatch:
     inputs:
       image_tag:
@@ -12,17 +18,20 @@ permissions:
   contents: read
   id-token: write
 
-jobs:
-  test-build-deploy:
-    runs-on: ubuntu-latest
-    timeout-minutes: 35
+concurrency:
+  group: paybridge-production-demo
+  cancel-in-progress: false
 
-    env:
-      AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
-      ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY || 'paybridge' }}
-      EC2_INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
-      SSM_PATH: ${{ vars.SSM_PATH || '/paybridge/prod' }}
-      DEPLOY_DIR: ${{ vars.DEPLOY_DIR || '/opt/paybridge' }}
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+  ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY || 'paybridge' }}
+  SSM_PATH: ${{ vars.SSM_PATH || '/paybridge/prod' }}
+  DEPLOY_DIR: ${{ vars.DEPLOY_DIR || '/opt/paybridge' }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
 
     steps:
       - name: Checkout
@@ -45,15 +54,22 @@ jobs:
           PAYBRIDGE_STRIPE_ENABLED: 'false'
         run: ./gradlew --no-daemon test
 
+  build-and-push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs: test
+    outputs:
+      image: ${{ steps.image.outputs.image }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
-
-      - name: Validate deployment variables
-        run: |
-          test -n "${EC2_INSTANCE_ID}" || { echo "EC2_INSTANCE_ID repository variable is required" >&2; exit 1; }
 
       - name: Login to Amazon ECR
         id: ecr-login
@@ -85,14 +101,72 @@ jobs:
             ${{ steps.image.outputs.image }}
             ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
 
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: build-and-push
+    environment:
+      name: production-demo
+      url: https://${{ vars.PAYBRIDGE_DOMAIN || 'paybridge-us.com' }}
+
+    env:
+      EC2_INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
+      PAYBRIDGE_IMAGE: ${{ needs.build-and-push.outputs.image }}
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Validate deployment variables
+        run: |
+          test -n "${EC2_INSTANCE_ID}" || { echo "EC2_INSTANCE_ID repository variable is required" >&2; exit 1; }
+          test -n "${PAYBRIDGE_IMAGE}" || { echo "PAYBRIDGE_IMAGE output is required" >&2; exit 1; }
+
+      - name: Sync deployment files on EC2 through SSM
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          deploy_dir = os.environ["DEPLOY_DIR"]
+          repository = os.environ["GITHUB_REPOSITORY"]
+          sha = os.environ["GITHUB_SHA"]
+          archive = f"/tmp/paybridge-{sha}.tar.gz"
+          commands = [
+              "set -euo pipefail",
+              "TMP_DIR=$(mktemp -d)",
+              f"ARCHIVE={archive}",
+              f"curl -fsSL https://github.com/{repository}/archive/{sha}.tar.gz -o ${{ARCHIVE}}",
+              "tar -xzf ${ARCHIVE} -C ${TMP_DIR} --strip-components=1",
+              f"mkdir -p {deploy_dir}",
+              f"cp -R ${{TMP_DIR}}/deploy/single-ec2/. {deploy_dir}/",
+              f"chmod +x {deploy_dir}/scripts/*.sh",
+              "rm -rf ${TMP_DIR} ${ARCHIVE}",
+          ]
+          Path("/tmp/paybridge-sync-parameters.json").write_text(json.dumps({"commands": commands}))
+          PY
+          COMMAND_ID=$(aws ssm send-command \
+            --document-name "AWS-RunShellScript" \
+            --instance-ids "${EC2_INSTANCE_ID}" \
+            --comment "Sync PayBridge single EC2 deployment files" \
+            --parameters file:///tmp/paybridge-sync-parameters.json \
+            --query "Command.CommandId" \
+            --output text)
+          aws ssm wait command-executed --command-id "${COMMAND_ID}" --instance-id "${EC2_INSTANCE_ID}"
+
       - name: Deploy image on EC2 through SSM
         run: |
-          cat > /tmp/paybridge-ssm-parameters.json <<JSON
+          cat > /tmp/paybridge-deploy-parameters.json <<JSON
           {
             "commands": [
               "set -euo pipefail",
               "cd ${DEPLOY_DIR}",
-              "AWS_REGION=${AWS_REGION} SSM_PATH=${SSM_PATH} PAYBRIDGE_IMAGE=${{ steps.image.outputs.image }} ./scripts/deploy.sh"
+              "AWS_REGION=${AWS_REGION} SSM_PATH=${SSM_PATH} PAYBRIDGE_IMAGE=${PAYBRIDGE_IMAGE} ./scripts/backup-postgres-if-running.sh",
+              "AWS_REGION=${AWS_REGION} SSM_PATH=${SSM_PATH} PAYBRIDGE_IMAGE=${PAYBRIDGE_IMAGE} ./scripts/deploy.sh"
             ]
           }
           JSON
@@ -100,12 +174,12 @@ jobs:
             --document-name "AWS-RunShellScript" \
             --instance-ids "${EC2_INSTANCE_ID}" \
             --comment "Deploy PayBridge Docker Compose stack" \
-            --parameters file:///tmp/paybridge-ssm-parameters.json \
+            --parameters file:///tmp/paybridge-deploy-parameters.json \
             --query "Command.CommandId" \
             --output text)
           aws ssm wait command-executed --command-id "${COMMAND_ID}" --instance-id "${EC2_INSTANCE_ID}"
 
-      - name: Smoke test
+      - name: Smoke test deployed service
         run: |
           DOMAIN=$(aws ssm get-parameter --name "${SSM_PATH}/app/domain" --query "Parameter.Value" --output text)
           curl --fail --retry 6 --retry-delay 10 "https://${DOMAIN}/actuator/health"

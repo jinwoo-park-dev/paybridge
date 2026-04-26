@@ -16,7 +16,7 @@ public class PayBridgeOpenApiConfiguration {
                 .info(new Info()
                         .title("PayBridge API")
                         .version("1.0.0")
-                        .description("Documented JSON endpoints for local development, code review, and operator review tooling. Server-rendered pages stay outside the documented REST endpoints.")
+                        .description("Documented JSON endpoints for local development and operator tooling. Server rendered pages stay outside the documented JSON API contract.")
                         .contact(new Contact().name("PayBridge").url("https://github.com/jinwoo-park-dev/paybridge"))
                         .license(new License().name("MIT").url("https://github.com/jinwoo-park-dev/paybridge/blob/main/LICENSE.txt")));
     }

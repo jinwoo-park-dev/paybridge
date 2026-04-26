@@ -12,7 +12,7 @@ public record SystemInfoResponse(
     String project,
     @Schema(example = "1.0.0")
     String releaseVersion,
-    @Schema(example = "Public portfolio demo for test payment flows")
+    @Schema(example = "Public demo for test payment flows")
     String demoType,
     @ArraySchema(schema = @Schema(example = "Checkout selection"))
     List<String> publicSurfaces,

@@ -38,7 +38,7 @@ class SystemInfoControllerTest {
             .andExpect(jsonPath("$.service").value("paybridge"))
             .andExpect(jsonPath("$.project").value("PayBridge"))
             .andExpect(jsonPath("$.releaseVersion").value("1.0.0"))
-            .andExpect(jsonPath("$.demoType").value("Public portfolio demo for test payment flows"))
+            .andExpect(jsonPath("$.demoType").value("Public demo for test payment flows"))
             .andExpect(jsonPath("$.publicSurfaces", hasItem("Checkout selection")))
             .andExpect(jsonPath("$.protectedSurfaces", hasItem("Payment detail")))
             .andExpect(jsonPath("$.frontendChoice").doesNotExist())
